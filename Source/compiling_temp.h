@@ -1,0 +1,97 @@
+#pragma once
+#include "commons.h"
+#include "compiler_utils.h"
+
+namespace utils
+{
+	struct TextPointer;
+}
+
+/*
+	Context describes, whats kinds of signatures we can use in given block of code
+	like. for example what in Global Scope and what in Pixel Shader
+*/
+enum class Context_t
+{
+	GlobalScope, Shader, CustomFunction, StructDeclaration
+};
+
+struct Struct
+{
+	uint8_t id;
+	//Name; type id
+	std::vector<std::pair<utils::TextPointer, int>> Members;
+	Struct(uint8_t _id) : id(_id) {};
+};
+
+struct FunctionHeader
+{
+	int Return_Type;
+	std::vector<int> ArgumentsTypes;
+	FunctionHeader(int _Return_Type, std::vector<int> _ArgumentsTypes) :
+		Return_Type(_Return_Type), ArgumentsTypes(_ArgumentsTypes) {};
+};
+
+/*
+	This object contains all temporary data, that compiling process need.
+	If you have to modify compiler and add some temporary variables - do it here
+*/
+struct Compiling_Temp
+{
+	/*
+		Store argument fields identyficators
+		If we found, that signature is matching
+		it is appended to binary vector after signature id
+	*/
+	std::vector<uint8_t> FieldsBuffor{};
+	/*
+		Store names between signature's IsMatching function
+		and writed function
+	*/
+	std::vector<utils::TextPointer> NamesBuffor{};
+	/*
+		List of all variables
+		TextPointer is name
+		pair first value is type
+		pair second is deepness
+	*/
+	std::vector<std::pair<utils::TextPointer, std::pair<int, int>>> Variables{};
+	/*
+		Store information about, how deep nested is currency compiled
+		block of code. It is used to track in which scope variable were created
+		and when we have to delete it. Global, default level is 0
+	*/
+	unsigned int Deepness = 0;
+	/*
+		Store layout of user declared structs.
+		Pair first is struct code name
+	*/
+	std::vector<std::pair<utils::TextPointer, Struct>> Structs;
+	/*
+		Id of type that represents layout of input
+		Set by "using layout".
+	*/
+	int layout_type_id = 0;
+	/*
+		Store informations about functions headers
+	*/
+	std::vector<std::pair<utils::TextPointer, FunctionHeader>> FunctionsHeaders;
+	/*
+		If something is wrong running signature's writed function
+		you can push error text into this vector
+		it will be threated like regular error
+	*/
+	std::vector<std::string> SignatureWritedFunctionErrors;
+	Context_t Context = Context_t::GlobalScope;
+	/*
+		See Version::compilation_conditions
+		key is condition name
+		value is whatever condition were met
+	*/
+	std::map<std::string, bool> CompilationConditions;
+
+	bool IsVarValiding(utils::TextPointer& var);
+	bool IsStructValiding(utils::TextPointer& struc);
+	std::pair<utils::TextPointer, std::pair<int, int>>* GetVar(utils::TextPointer& var);
+	int GetVarId(utils::TextPointer& var);
+};
