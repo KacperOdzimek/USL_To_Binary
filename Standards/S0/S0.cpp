@@ -115,10 +115,10 @@ namespace Standards
 		});
 
 		V->AllowConversion("int", "float", [V](utils::TextPointer src)
-			{
-				float as_float = TextToInt(src);
-				return std::to_string(as_float);
-			});
+		{
+			float as_float = TextToInt(src);
+			return std::to_string(as_float);
+		});
 
 		/*
 			Basic Types Manipulations
@@ -188,10 +188,18 @@ namespace Standards
 #undef ModNumbers
 
 		/*
+			Shaders Return Types
+		*/
+		V->SetShadersReturnTypes({
+			V->FindTypeIdFromName({ (char*)"vec4", 4 }),
+			V->FindTypeIdFromName({ (char*)"vec4", 4 })
+		});
+
+		/*
 			Signatures
 		*/
 
-		V->AddSignature("VertexShader:", { Context_t::GlobalScope }, []() 
+		V->AddSignature("VertexShader:", { Context_t::GlobalScope }, [V]() 
 			{
 				if (Temp->CompilationConditions.at("ContainsVertexShader"))
 					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one vertex shader");
@@ -202,20 +210,31 @@ namespace Standards
 				Temp->CompilationConditions.at("ContainsVertexShader") = true;
 				Temp->Deepness++;
 				Temp->Context = Context_t::Shader;
+				Temp->ShaderType = ShaderType_t::VertexShader;
+				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
 
 				utils::TextPointer name((char*)"Vertex", 6);
 				Temp->Variables.push_back({name, {Temp->layout_type_id, 1}});
+
+				for (auto& ext : Temp->ExternVariables)
+					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
 			});
 
-		V->AddSignature("PixelShader:", { Context_t::GlobalScope }, []()
+		V->AddSignature("PixelShader:", { Context_t::GlobalScope }, [V]()
 			{
 				Temp->CompilationConditions.at("ContainsPixelShader") = true;
 				Temp->Deepness++;
 				Temp->Context = Context_t::Shader;
+				Temp->ShaderType = ShaderType_t::PixelShader;
+
+				for (auto& ext : Temp->ExternVariables)
+					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+
+				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
 			});
 
 		//return instruction
-		V->AddSignature("return ?e", { Context_t::Shader, Context_t::CustomFunction }, nullptr);
+		V->AddSignature("return ?r", { Context_t::Shader, Context_t::CustomFunction }, nullptr);
 
 		//Variable declaration without initialization
 		V->AddSignature("?t ?n", { Context_t::Shader, Context_t::StructDeclaration, Context_t::CustomFunction }, []()
@@ -308,6 +327,40 @@ namespace Standards
 					Temp->CompilationConditions.at("VertexLayoutSpecified") = true;
 					Temp->layout_type_id = Temp->FieldsBuffor.at(0);
 				}
+			});
+
+		V->AddSignature("using extern ?t ?n", { Context_t::GlobalScope }, [V]()
+			{
+				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
+					Temp->SignatureWritedFunctionErrors.push_back("using extern cannot be used until vertex layout is specified");
+				else if (!Temp->IsExternValiding(Temp->NamesBuffor[0]))
+					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
+				else
+				{
+					std::string error = "Extern variable ";
+					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+						error += (*(Temp->NamesBuffor[0].begin + i));
+					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+				}
+			});
+
+		V->AddSignature("send ?t ?n = ?e", { Context_t::Shader }, [V]()
+			{
+				std::cout << "send\n";
+				Temp->Sent.push_back({Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+			});
+
+		V->AddSignature("catch ?t ?n", { Context_t::Shader }, [V]()
+			{
+				for (int i = 0; i < Temp->Sent.size(); i++)
+					if (Temp->Sent[i].first == Temp->NamesBuffor[0] 
+						&& Temp->FieldsBuffor[0] == Temp->Sent[i].second.first)
+					{
+						Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
+						Temp->pass_to_binary_buffor.push_back(i);
+					}
+
+				std::cout << "catched\n";
 			});
 
 		return V;

@@ -16,6 +16,11 @@ enum class Context_t
 	GlobalScope, Shader, CustomFunction, StructDeclaration
 };
 
+enum class ShaderType_t : uint8_t
+{
+	VertexShader, PixelShader
+};
+
 struct Struct
 {
 	uint8_t id;
@@ -56,6 +61,9 @@ struct Compiling_Temp
 		pair second is deepness
 	*/
 	std::vector<std::pair<utils::TextPointer, std::pair<int, int>>> Variables{};
+	std::vector<std::pair<utils::TextPointer, int>> ExternVariables;
+	//Name, Type, Sender
+	std::vector<std::pair<utils::TextPointer, std::pair<int, ShaderType_t>>> Sent;
 	/*
 		Store information about, how deep nested is currency compiled
 		block of code. It is used to track in which scope variable were created
@@ -83,6 +91,7 @@ struct Compiling_Temp
 	*/
 	std::vector<std::string> SignatureWritedFunctionErrors;
 	Context_t Context = Context_t::GlobalScope;
+	ShaderType_t ShaderType = ShaderType_t::VertexShader;
 	/*
 		See Version::compilation_conditions
 		key is condition name
@@ -90,7 +99,13 @@ struct Compiling_Temp
 	*/
 	std::map<std::string, bool> CompilationConditions;
 
+	int RequestedReturnType = -1;
+
+	//Can be used by signatures to pass external bytes to binary
+	std::vector<uint8_t> pass_to_binary_buffor;
+
 	bool IsVarValiding(utils::TextPointer& var);
+	bool IsExternValiding(utils::TextPointer& ext);
 	bool IsStructValiding(utils::TextPointer& struc);
 	std::pair<utils::TextPointer, std::pair<int, int>>* GetVar(utils::TextPointer& var);
 	int GetVarId(utils::TextPointer& var);

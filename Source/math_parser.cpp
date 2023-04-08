@@ -245,6 +245,9 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
     auto GoUp = [&path, &Tree, &current_node]()
     {
         int jump = 0;
+
+        auto n = current_node->upper;
+
         while (true)
         {
             //No nodes left. Finish task.
@@ -253,8 +256,9 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
                 return false;
             }
             int last_node_id = path.back();
-            last_node_id++;
-            if (current_node->upper->OwnedNodes.size() > last_node_id)
+            last_node_id++;      
+
+            if (n->OwnedNodes.size() > last_node_id)
             {
                 path.back() += 1;
                 ExpressionTree::Node* up = current_node->upper;
@@ -265,6 +269,7 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
             }
             else
             {
+                n = n->upper;
                 path.erase(path.end() - 1);
                 jump++;
             }

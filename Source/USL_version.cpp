@@ -264,7 +264,8 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                         j++;
                     }
 
-                    if (c_i + c_w.length + 1 == s - spaces_after)
+                    if (c_i + c_w.length + 1 >= s - spaces_after - 1 &&
+                        c_i + c_w.length + 1 <= s - spaces_after + 1)
                         goto l_end;
 
                     else if (*c_w.begin == '(')
@@ -327,7 +328,10 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                 EndCase
 
             //Expression returning type, passed in first type field
-            case 'e': {
+            case 'e': 
+            //Expression returning type, saved in Temp->RequestedReturnType
+            case 'r':
+                {
                 /*
                     first, we need to find expression bounds
                     code below do it by following this pattern:
@@ -413,7 +417,9 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
 
                 int length = iterator - c_w.begin;
 
-                result = math_parser::ParseMath({ c_w.begin, length }, Temp->FieldsBuffor[first_type_id], this, issues);
+                result = math_parser::ParseMath({ c_w.begin, length }, 
+                    s_w.begin[1] == 'e' ? Temp->FieldsBuffor[first_type_id] : Temp->RequestedReturnType,
+                    this, issues);
                 c_i = iterator - t - c_w.length - 1;
                 EndCase
 

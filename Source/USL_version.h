@@ -256,6 +256,14 @@ public:
 
 	bool IsAllowedConversion(int source_type, int target_type);
 	std::string Convert(int source_type, int target_type, utils::TextPointer source);
+
+private:
+	std::vector<int> ShadersReturnTypes;
+public:
+	void SetShadersReturnTypes(std::vector<int> _ShadersReturnTypes)
+	{
+		ShadersReturnTypes = _ShadersReturnTypes;
+	}
 };
 
 #undef Temp

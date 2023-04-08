@@ -13,6 +13,8 @@ void CompilingTask::Start(void* source, int size)
 
 	char* begin = (char*)source;
 
+	std::vector<std::string> prompt;
+
 	Version* CurrentVersion = CreateVersion(0);
 
 	//Create compilation conditions
@@ -29,7 +31,7 @@ void CompilingTask::Start(void* source, int size)
 	//Current line of code
 	int line = 0;
 
-	auto FinishSig = [&signature_start, &signature_end, &begin, &binary, &CurrentVersion, &line]() mutable {
+	auto FinishSig = [&prompt, &signature_start, &signature_end, &begin, &binary, &CurrentVersion, &line]() mutable {
 		if ((signature_end - signature_start) != 2)
 		{
 			auto result = CurrentVersion->Match(&begin[signature_start], signature_end - signature_start);
@@ -44,9 +46,13 @@ void CompilingTask::Start(void* source, int size)
 				Temp->SignatureWritedFunctionErrors.clear();
 				result.matching_signature->LeaveTranslatorTips();
 
+				for (auto& v : Temp->pass_to_binary_buffor)
+					binary.push_back(v);
+				Temp->pass_to_binary_buffor.clear();
+
 				if (Temp->SignatureWritedFunctionErrors.size())
 					for (auto issue : Temp->SignatureWritedFunctionErrors)
-						std::cout << "Error at line " << line << ": " << issue << ".\n";
+						prompt.push_back(std::string("Error at line ") + std::to_string(line) + ": " + issue + ".");
 
 				return;
 			}
@@ -54,14 +60,11 @@ void CompilingTask::Start(void* source, int size)
 			{
 				for (auto matching : result.matching_but_wrong)
 					for (auto issue : matching.issues)
-						std::cout << "Error at line " << line << ": " << issue << ".\n";
+						prompt.push_back(std::string("Error at line ") + std::to_string(line) + ": " + issue + ".");
 
 				if (result.matching_but_wrong.size() == 0)
-				{
-					std::cout << "Error at line " << line << ": " << "Incorrect line." << '\n';
-				}
+					prompt.push_back(std::string("Error at line ") + std::to_string(line) + ": " + "Incorrect line.");
 
-				//ERROR NO MATCHING
 				return;
 			}
 		}
@@ -94,6 +97,7 @@ void CompilingTask::Start(void* source, int size)
 	*/
 	Temp->Context = Context_t::GlobalScope;
 	int local_deepness = 0;
+	int space_counter = 0;
 	bool non_white_char_occured = false;
 	for (size_t i = 0; i < size + 1; i++)
 	{
@@ -103,13 +107,34 @@ void CompilingTask::Start(void* source, int size)
 			local_deepness++;
 			signature_start++;
 		}
+		else if (begin[i] == ' ' && !non_white_char_occured)
+		{
+			space_counter++;
+			if (space_counter == 4)
+			{
+				space_counter = 0;
+				local_deepness++;
+			}
+			signature_start++;
+		}
 		else if (begin[i] == '\n' || i == size)
 		{
+			if (!non_white_char_occured)
+			{
+				local_deepness = 0;
+				non_white_char_occured = false;
+				space_counter = 0;
+				continue;
+			}		
+
 			line++;
 			//line is empty; bypass
 			if ((signature_end - signature_start) == 2)
 			{
 				signature_start = signature_end;
+				local_deepness = 0;
+				non_white_char_occured = false;
+				space_counter = 0;
 				continue;
 			}
 			//line contains only white characters
@@ -144,11 +169,13 @@ void CompilingTask::Start(void* source, int size)
 				FinishSig();
 			}
 			//line is nested without reason. Raise error.
-			else std::cout << "Error at line " << line << ": " << "Invalid syntax (nested block)." << "\n";
+			else prompt.push_back(std::string("Error at line ") + std::to_string(line) + ": " + "Invalid syntax (nested block).");
+
 			local_deepness = 0;
 			non_white_char_occured = false;
+			space_counter = 0;
 		}
-		else if (begin[i] != '\t' && begin[i] == ' ')
+		else if (begin[i] != '\t' && begin[i] != ' ')
 			non_white_char_occured = true;
 	}
 
@@ -158,13 +185,13 @@ void CompilingTask::Start(void* source, int size)
 		if (!condition.second)
 		{
 			//Error; Not met condition
-			std::cout << "Error: " << CurrentVersion->GetConditionErrorText(condition.first) << '\n';
+			prompt.push_back(std::string("Error: ") + CurrentVersion->GetConditionErrorText(condition.first));
 		}
 	}
 
-	std::cout << "\n\nBinary: " << binary.size() << "\n";
-	for (uint8_t i : binary)
-		std::cout << (int)i << '\n';
+	result.success = !prompt.size();
+	result.prompt = prompt;
+	result.data = binary;
 
 	delete CurrentVersion;
 	delete Temp;

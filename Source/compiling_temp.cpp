@@ -8,6 +8,14 @@ bool Compiling_Temp::IsVarValiding(utils::TextPointer& var)
 	return 0;
 }
 
+bool Compiling_Temp::IsExternValiding(utils::TextPointer& ext)
+{
+	for (auto& V : ExternVariables)
+		if (V.first == ext)
+			return 1;
+	return 0;
+}
+
 bool Compiling_Temp::IsStructValiding(utils::TextPointer& struc)
 {
 	for (auto& S : Structs)

@@ -294,7 +294,7 @@ namespace math_parser
                         {
                             auto subexp = new RawExpressionTree(
                                 { node->Content.begin + last_comma + ((last_comma == 1) ? 0 : 1)
-                                ,i - last_comma - (last_comma == 1 ? 0 : 1) - 1}, V, issues);
+                                ,i - last_comma - (last_comma == 1 ? 0 : 1)}, V, issues);
                             subtrees.push_back(subexp);
                             last_comma = i;   
                         }
@@ -363,7 +363,7 @@ namespace math_parser
                         else
                         {
                             //find requested compound id
-                            int vec_size;
+                            int vec_size = 0;
                             if (get_target_type_id == version->FindTypeIdFromName({ (char*)"vec2", 4 })) vec_size = 2;
                             else if (get_target_type_id == version->FindTypeIdFromName({ (char*)"vec3", 4 })) vec_size = 3;
                             else if (get_target_type_id == version->FindTypeIdFromName({ (char*)"vec4", 4 })) vec_size = 4;
@@ -534,7 +534,7 @@ namespace math_parser
     std::pair<std::vector<char>, std::vector<utils::TextPointer>> GetOperatorsAndOperands(utils::TextPointer& exp)
     {
         int i = 0;
-        int bound = exp.length;
+        int bound = exp.length + 1;
         if (bound == 0)
             bound = 1;
         int j = 0;
@@ -560,7 +560,7 @@ namespace math_parser
             //Pass spaces before arg
             while (exp.begin[i] == ' ' && i < bound)
                 i++;
-            //Save arg start
+            //Save arg begin
             int start = i;
 
             bool negative = exp.begin[i] == '-';
@@ -569,7 +569,7 @@ namespace math_parser
             int deep = 1;
 
             //Iterate through arg
-            while (i <= bound)
+            do
             {
                 switch (exp.begin[i])
                 {
@@ -604,19 +604,19 @@ namespace math_parser
                     non_special_chars_occurred = true;
                     break;
                 }
-                }
+                } 
                 i++;
-            }
+            } while (i < bound);
         end:
-            int end = i;
-            return utils::TextPointer(exp.begin + start, (uint64_t)end - start - (bound == 1 ? 1 : 0));
+            int end = (uint64_t)i - start - (bound == 1 ? 1 : 0);
+            return utils::TextPointer(exp.begin + start, end == bound - start ? end - 1 : end);
         };
 
         auto GetOperator = [&exp, &i, bound]()
         {
             i--;
             //Wait for operator
-            while (i <= bound)
+            while (i < bound)
             {
                 i++;
                 switch (exp.begin[i])
@@ -637,7 +637,7 @@ namespace math_parser
         std::vector<utils::TextPointer> operands;
 
         int state = 0;
-        while (i <= bound)
+        while (i < bound)
         {
             if (exp.begin[i] == '\r' || exp.begin[i] == '\n' || exp.begin[i] == '\0')
             {
