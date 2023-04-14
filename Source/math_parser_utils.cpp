@@ -234,30 +234,72 @@ namespace math_parser
             }
         }
 
-        //Find nested expressions (those in brackets), create tree for them
-        //and merge those trees with main tree
+        auto contains_bracket = [](utils::TextPointer tp) -> bool
+        {
+            for (int i = 0; i < tp.length; i++)
+                if (tp.begin[i] == '(')
+                    return 1;
+            return 0;
+        };
+
+        auto GenSubexpForArg = [this, V, &issues](utils::TextPointer start) -> int
+        {
+            int i = 1;
+            int last_comma = 1;
+            int deep = 1;
+            int commas = 0;
+
+            bool content = false;
+
+            while (deep != 0)
+            {
+                switch (start.begin[i])
+                {
+                case '(': deep++; break;
+                case ')': deep--; break;
+                case ',': if (deep == 1) commas++; break;
+                case ' ': case '\n': break;
+                default: content = true;
+                }
+
+                if (start.begin[i] == ',' && deep == 1 || deep == 0 && content)
+                {
+                    auto subexp = new RawExpressionTree(
+                        { start.begin + last_comma + ((last_comma == 1) ? 0 : 1)
+                        ,i - last_comma - (last_comma == 1 ? 0 : 1) }, V, issues);
+                    subtrees.push_back(subexp);
+                    last_comma = i;
+                }
+                i++;
+            }
+            if (content == false) return 0;
+            return commas + 1;
+        };
+
+        //Find nested expressions (those in brackets), vectors constructors and functions calls 
+        //and create tree for them, then merge those trees with main tree
         for (auto& node : All_Nodes)
-            if (node->Content.begin[0] == '(')
+            if (contains_bracket(node->Content))
             {     
                 auto CountCommasAndCheckIfContainsAnything = [node]()
                 {
-                    int i = 1;
+                    int i = 0;
                     int commas = 0;
                     int deep = 0;
                     bool contains_something = false;
-                    while (node->Content.begin[i] != ')')
+
+                    for (int i = 0; i < node->Content.length; i++)
                     {
                         switch (node->Content.begin[i])
                         {
-                        //Discard commas nested very deep
-                        case ',': if (deep == 0) commas++; break;
-                        case '(': deep--; break;
-                        case ')': deep--; break;
-                        case ' ': break; case '\t': break;
-                        default: contains_something = true;
+                            case ',': if (deep == 1) commas++; break;
+                            case '(': deep++;                  break;
+                            case ')': deep--;                  break;
+                            case ' ': break; case '\t': break;
+                            default: contains_something = true;
                         }
-                        i++;
                     }
+
                     return std::pair<int, bool>(commas, contains_something);
                 };
 
@@ -269,39 +311,26 @@ namespace math_parser
                     continue;
                 }
 
+                //Function call
+                if (node->Content.begin[0] != '(')
+                {
+                    int i = 1;
+                    while (node->Content.begin[i] != '(') ++i;
+                    int args = GenSubexpForArg({ node->Content.begin + i, node->Content.length - i });
+                    node->Content.length = i;
+
+                    for (int j = subtrees.size() - args; j != subtrees.size(); j++)
+                        node->Own(subtrees[j]->Uppest());
+                }
                 //Check if it is vector literal
-                if (V->FindTypeIdFromLiteral(node->Content) != -1)
+                else if (V->FindTypeIdFromLiteral(node->Content) != -1)
                     continue;
-  
                 //If we have commas, then it is something like (2 * 2, 2 + 2) which is also vector
                 else if (commasXcontains.first > 0)
                 {
-                    int i = 1;
-                    int last_comma = 1;
-                    int deep = 1;
-                    int commas = 0;
+                    GenSubexpForArg(node->Content);
 
-                    while (deep != 0)
-                    {
-                        if (node->Content.begin[i] == '(')
-                            deep++;
-                        if (node->Content.begin[i] == ')')
-                            deep--;
-
-                        if (node->Content.begin[i] == ',')
-                            commas++;
-                        if (node->Content.begin[i] == ',' && deep == 1 || deep == 0)
-                        {
-                            auto subexp = new RawExpressionTree(
-                                { node->Content.begin + last_comma + ((last_comma == 1) ? 0 : 1)
-                                ,i - last_comma - (last_comma == 1 ? 0 : 1)}, V, issues);
-                            subtrees.push_back(subexp);
-                            last_comma = i;   
-                        }
-                        i++;
-                    } 
-
-                    switch (commas)
+                    switch (commasXcontains.first)
                     {
                     case 1: chars_buff.push_back('\2'); node->Content.begin = &chars_buff.back();
                         node->Content.length = 1; break;
@@ -313,7 +342,7 @@ namespace math_parser
                         throw ((int)1); break;
                     }
 
-                    for (i = commas + 1; i != 0; i--)
+                    for (int i = commasXcontains.first + 1; i != 0; i--)
                     {
                         auto upp = subtrees[subtrees.size() - i]->Uppest();
                         node->Own(upp);
@@ -391,6 +420,7 @@ namespace math_parser
                             }
                     }
                 }
+                //Operator
 				else if (n->Content.length == 1)
 				{
 					switch (n->Content.begin[0])
@@ -422,15 +452,73 @@ namespace math_parser
 						processed->content.Literal = { TypeId, n->Content };
 					}
 					//Check if it is an variable
-					else if (Temp->IsVarValiding(n->Content))
+					else if (Temp->IsVarValiding(n->Content) && n->Owned.size() == 0)
 					{
 						processed->Type = ExpressionTree::NodeType::Variable;
 						processed->content.Variable = Temp->GetVarId(n->Content);
 					}
                     else
                     {
-                        std::string symbol(n->Content.begin);
-                        issues.push_back("Unrecognised symbol: " + symbol.substr(0, n->Content.length));
+                        //Check if it is a function call
+                        if (n->Owned.size() != 0 || *(n->Content.begin + n->Content.length) == '(')
+                        {
+                            std::vector<int> a_types;
+                            //We need to know function args types, so lets convert child nodes first
+                            bool success = true;
+                            for (auto o : n->Owned)
+                            {
+                                auto r = SelfRef(o, SelfRef, processed);
+                                if (!r.first)
+                                    success = false;
+                                processed->OwnedNodes.push_back(r.second);
+                                r.second->upper = processed;
+                            }
+
+                            for (auto& arg : processed->OwnedNodes)
+                                a_types.push_back(arg->GetNodeDataTypeId(version));
+
+                            int func_id = Temp->GetFunctionId(n->Content, a_types);
+
+                            if (func_id >= 0)
+                            {
+                                processed->Type = NodeType::Function;
+                                processed->content.FunctionId = func_id;
+                                return { true, processed }; //Return as child nodes were converted
+                            }
+                            switch (func_id)
+                            {
+                            case -1:
+                                goto Unrecognised_symbol; break;
+                            case -2:
+                            {
+                                std::string str = "type/s of arguments doesn't match any overload of function: ";
+                                str += n->Content.begin;
+                                issues.push_back(str);
+                                break;
+                            }
+                            case -3:
+                            {
+                                std::string str = "argument set too big for function of name: ";
+                                str += n->Content.begin;
+                                issues.push_back(str);
+                                break;
+                            }
+                            case -4:
+                            {
+                                std::string str = "argument set too little for function of name: ";
+                                str += n->Content.begin;
+                                issues.push_back(str);
+                                break;
+                            }
+                            }
+                            
+                        }
+                        else
+                        {
+                            Unrecognised_symbol:
+                            std::string symbol(n->Content.begin);
+                            issues.push_back("Unrecognised symbol: " + symbol.substr(0, n->Content.length));
+                        }
                     }
 				}
 
@@ -519,13 +607,11 @@ namespace math_parser
                     return version->GetOperationReturnType(type_lhs, type_rhs, content.OperatorType);
                 break;
             }
+            break;
         }
-        //case math_parser::ExpressionTree::NodeType::Function:
-        //    break;
-        //case math_parser::ExpressionTree::NodeType::StructMember:
-        //    break;
-        //case math_parser::ExpressionTree::NodeType::Byte:
-        //    break;
+        case math_parser::ExpressionTree::NodeType::Function:
+            return Temp->FunctionsHeaders.at(content.FunctionId).second.Return_Type;
+            break;
         }
 
         return -1;

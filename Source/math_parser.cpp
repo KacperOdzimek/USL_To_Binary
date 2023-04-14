@@ -333,13 +333,16 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
         }
         case math_parser::BinaryNode::Type::Function:
         {
-            //TODO: if dynamic write args count here
-            bn.SetRest(0); break;
-            //Go Deeper
-            path.push_back(0);
-            current_node = current_node->OwnedNodes[0];
+            bn.SetRest(current_node->content.FunctionId);
             Binary.push_back(bn);
-            return true;
+            //Go Deeper
+            if (current_node->OwnedNodes.size() != 0)
+            {
+                path.push_back(0);
+                current_node = current_node->OwnedNodes[0];
+                return true;
+            }
+            GoUp(); break;
         }
         case math_parser::BinaryNode::Type::Byte:
         {

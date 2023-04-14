@@ -305,12 +305,17 @@ namespace Standards
 				Temp->Context = Context_t::CustomFunction;
 				Temp->Deepness += 1;
 
+				Temp->RequestedReturnType = Temp->FieldsBuffor[0];
+
+				for (auto& ext : Temp->ExternVariables)
+					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+
 				std::vector<int> Args_Types;
 
 				//Add function parameters to variables list
-				for (int i = 1; i < Temp->NamesBuffor.size(); i++)
+				for (int i = 2; i < Temp->FieldsBuffor.size(); i++)
 				{
-					Temp->Variables.push_back({ Temp->NamesBuffor[i], {Temp->FieldsBuffor[i], Temp->Deepness} });
+					Temp->Variables.push_back({ Temp->NamesBuffor[i - 1], {Temp->FieldsBuffor[i], Temp->Deepness} });
 					Args_Types.push_back(Temp->FieldsBuffor[i]);
 				}
 
@@ -318,6 +323,7 @@ namespace Standards
 				Temp->FunctionsHeaders.push_back({ Temp->NamesBuffor.front(), {Temp->FieldsBuffor[0], Args_Types} });
 			});
 
+		//Declare vertex layout
 		V->AddSignature("using layout ?t", { Context_t::GlobalScope }, [V]()
 			{
 				if (Temp->CompilationConditions.at("VertexLayoutSpecified"))
@@ -329,6 +335,7 @@ namespace Standards
 				}
 			});
 
+		//Add uniform
 		V->AddSignature("using extern ?t ?n", { Context_t::GlobalScope }, [V]()
 			{
 				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
@@ -344,12 +351,21 @@ namespace Standards
 				}
 			});
 
+		//Send value to another shader
 		V->AddSignature("send ?t ?n = ?e", { Context_t::Shader }, [V]()
 			{
-				std::cout << "send\n";
+				for (int i = 0; i < Temp->Sent.size(); i++)
+					if (Temp->Sent[i].first == Temp->NamesBuffor[0])
+					{
+						std::string error = "Already sent value with name: ";
+						for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+							error += (*(Temp->NamesBuffor[0].begin + i));
+						Temp->SignatureWritedFunctionErrors.push_back(error);
+					}	
 				Temp->Sent.push_back({Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
 			});
 
+		//Catch value sent by other shader
 		V->AddSignature("catch ?t ?n", { Context_t::Shader }, [V]()
 			{
 				for (int i = 0; i < Temp->Sent.size(); i++)
@@ -359,8 +375,11 @@ namespace Standards
 						Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
 						Temp->pass_to_binary_buffor.push_back(i);
 					}
-
-				std::cout << "catched\n";
+					else if (Temp->Sent[i].first == Temp->NamesBuffor[0])
+					{
+						Temp->SignatureWritedFunctionErrors.push_back(
+							"The type specified in the catch statement does not match the type specified in the send statement");
+					}
 			});
 
 		return V;

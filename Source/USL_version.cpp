@@ -296,19 +296,17 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
             //e.g. int a, int b
             case 'f': {
                 //at this point c_w's begin is seted to first letter
-                //after '(' character
-                
+                //after '(' character              
                 auto x = utils::ExtrudeArguments(c_w.begin - 1, utils::BracketsType::parentheses);
-
+                Temp->FieldsBuffor.push_back(x.first.size());
                 if (x.second != 0)
                 {
                     auto args = x.first;
 
                     for (auto& a : args)
                     {
-                        //a.Print();
                         auto type = utils::TextPointer::Get(a.begin);
-                        result = IsTypeValiding(type.begin);
+                        result = IsTypeValiding(type.begin) || Temp->IsStructValiding(type);
                         if (result)
                         {
                             Temp->FieldsBuffor.push_back(TypeNameToTypeId(type.begin));
@@ -353,7 +351,7 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                 */
 
                 char* iterator = c_w.begin - 1;
-                bool bracket = false;
+                int deep = 0;
                 bool operator_detected = true;
                 bool operand;
 
@@ -368,11 +366,11 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                         break;
 
                     case '(':
-                        bracket = true;
+                        deep++;
                         break;
 
                     case ')':
-                        bracket = false;
+                        deep--;
                         break;
 
                     case '.':
@@ -389,7 +387,7 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                     }
 
                     case ',':
-                        if (!bracket)
+                        if (deep == 0)
                             goto leave_expression;
                         else
                         {

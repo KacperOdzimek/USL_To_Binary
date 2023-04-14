@@ -77,6 +77,8 @@ namespace math_parser
 
 		Node* Uppest()
 		{
+			if (All_Nodes.size() == 0)
+				return nullptr;
 			auto c = All_Nodes[0];
 			while (c->Upper != nullptr)
 				c = c->Upper;
@@ -96,7 +98,7 @@ namespace math_parser
 			NodeType Type;
 			union content_u
 			{
-				utils::TextPointer FunctionName;
+				int FunctionId;
 				//type id, literal
 				std::pair<int, utils::TextPointer> Literal;
 				//variable id

@@ -151,6 +151,21 @@ namespace utils
 		}
 		++i;
 
+		int j = i;
+		bool not_empty = false;
+		while (src[j] != closing_bracket)
+		{
+			switch (src[j])
+			{
+			case ' ': case '\t':	   break;
+			default: not_empty = true; break;
+			}
+			j++;
+		}
+
+		if (!not_empty)
+			return { {}, j + 1};
+
 		std::vector<TextPointer> result;
 
 		while (src[i - 1] != closing_bracket)
