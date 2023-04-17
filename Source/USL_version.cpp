@@ -225,6 +225,7 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                     Temp->NamesBuffor.push_back(utils::TextPointer(c_w.begin, c_w.length - 1));
                 else
                     Temp->NamesBuffor.push_back(c_w);
+                if (c_w.begin[1] == '[') c_i--;
                 EndCase
             //Variable of type, passed in first type field
             case 'v': {
@@ -433,7 +434,7 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                     auto bin = Types[int_type]->to_binary(c_w);
                     Temp->FieldsBuffor.insert(Temp->FieldsBuffor.end(), bin.begin(), bin.end());
                 }
-                c_i--;
+                if (c_w.begin[1] == ']') c_i--;
                 EndCase
             //Array literal (element type = Temp->FieldsBuffor[first_type_id], size = Temp->FieldsBuffor[1-4])
             case 'a': {
@@ -479,6 +480,10 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
             }
         }
     }
+
+    if (c_i + 2 == s)
+        if (t[c_i] == '\r' && t[c_i + 1] == '\n')
+            c_i = s;
 
     //Check if we have iterated to end of code
     bool iterated_to_end = result && (c_i == s || c_i == s - 1 || c_i == s + 1);
