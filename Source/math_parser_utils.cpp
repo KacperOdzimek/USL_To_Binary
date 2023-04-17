@@ -59,7 +59,7 @@ namespace math_parser
                         /       <----\
                     operator         This places will be filled in next steps
                     /      \    <----/
-                operand  
+                operand
 
                 Then we do for all of the next operators:
                 If previous operator precedence < current operator operators precedence
@@ -97,8 +97,8 @@ namespace math_parser
                             /                                       /
                            +                                        +
                          /   \              + (3 *)    ---->      /   \
-                        2     : <-- last                         2    [*]    <-- inserted; 
-                            /   \                                    /   \       stoped on + 
+                        2     : <-- last                         2    [*]    <-- inserted;
+                            /   \                                    /   \       stoped on +
                            3    3                                  [3]    :      with lower predence
                                                                         /   \
 
@@ -175,7 +175,7 @@ namespace math_parser
                         case '^': a_precedence = 2; break;
                         case '.': a_precedence = 3; break;
                         }
-  
+
                         //Current precedence >= above precedence; keep going or
                         if (a_precedence >= p_precedence)
                         {
@@ -227,7 +227,7 @@ namespace math_parser
 
             //Add remaining operand to last node
             if (operands.size() == 1)
-            {    
+            {
                 RawExpressionTree::Node* operand = CreateNode();
                 operand->Content = operands[0];
                 Previous->Own(operand);
@@ -239,6 +239,21 @@ namespace math_parser
             for (int i = 0; i < tp.length; i++)
                 if (tp.begin[i] == '(')
                     return 1;
+            return 0;
+        };
+
+        auto is_array_get = [](utils::TextPointer tp) -> bool
+        {
+            int deep = 0;
+            for (int i = 0; i < tp.length; i++)
+            {
+                switch (tp.begin[i])
+                {
+                case '(': ++deep; break;
+                case ')': --deep; break;
+                case '[': if (deep == 0) return 1;
+                }
+            }
             return 0;
         };
 
@@ -279,8 +294,9 @@ namespace math_parser
         //Find nested expressions (those in brackets), vectors constructors and functions calls 
         //and create tree for them, then merge those trees with main tree
         for (auto& node : All_Nodes)
+        {
             if (contains_bracket(node->Content))
-            {     
+            {
                 auto CountCommasAndCheckIfContainsAnything = [node]()
                 {
                     int i = 0;
@@ -292,11 +308,11 @@ namespace math_parser
                     {
                         switch (node->Content.begin[i])
                         {
-                            case ',': if (deep == 1) commas++; break;
-                            case '(': deep++;                  break;
-                            case ')': deep--;                  break;
-                            case ' ': break; case '\t': break;
-                            default: contains_something = true;
+                        case ',': if (deep == 1) commas++; break;
+                        case '(': deep++;                  break;
+                        case ')': deep--;                  break;
+                        case ' ': break; case '\t': break;
+                        default: contains_something = true;
                         }
                     }
 
@@ -339,7 +355,9 @@ namespace math_parser
                     case 3: chars_buff.push_back('\4'); node->Content.begin = &chars_buff.back();
                         node->Content.length = 1; break;
                     default:
-                        throw ((int)1); break;
+                        issues.push_back("Too many arguments for vector constructor");
+                        throw ((int)1);
+                        break;
                     }
 
                     for (int i = commasXcontains.first + 1; i != 0; i--)
@@ -362,6 +380,38 @@ namespace math_parser
                         own->Upper = node;
                 }
             }
+            //a[1], b[2 / 2], c[i] etc.
+            else if (is_array_get(node->Content))
+            {
+                int deep = 0;
+                int i = 0;
+                int open = 0;
+                while (true)
+                {
+                    switch (node->Content.begin[i])
+                    {
+                    case '(': ++deep; break;
+                    case ')': --deep; break;
+                    case '[': if (deep == 0) open = i; break;
+                    case ']': if (deep == 0) goto lhs_arr_get_end;
+                    }
+                    i++;
+                }
+            lhs_arr_get_end:
+                auto lhs = new RawExpressionTree({ node->Content.begin, open }, V, issues);
+                subtrees.push_back(lhs);
+
+                auto rhs = new RawExpressionTree({ node->Content.begin + open + 1, i - open - 1 }, V, issues);
+                subtrees.push_back(rhs);
+
+                node->Own(lhs->Uppest());
+                node->Own(rhs->Uppest());
+                
+                chars_buff.push_back('[');
+                node->Content.begin = &chars_buff.back();
+                node->Content.length = 1;
+            }
+        }
     }
 
 
@@ -425,17 +475,18 @@ namespace math_parser
 				{
 					switch (n->Content.begin[0])
 					{
-						case '+': processed->content.OperatorType = OperatorType_T::add; break;
-						case '-': processed->content.OperatorType = OperatorType_T::sub; break;
-						case '*': processed->content.OperatorType = OperatorType_T::mul; break;
-						case '/': processed->content.OperatorType = OperatorType_T::div; break;
-						case '^': processed->content.OperatorType = OperatorType_T::pow; break;
+						case '+': processed->content.OperatorType = OperatorType_T::add;       break;
+						case '-': processed->content.OperatorType = OperatorType_T::sub;       break;
+						case '*': processed->content.OperatorType = OperatorType_T::mul;       break;
+						case '/': processed->content.OperatorType = OperatorType_T::div;       break;
+						case '^': processed->content.OperatorType = OperatorType_T::pow;       break;
 
-                        case '.': processed->content.OperatorType = OperatorType_T::get; break;
+                        case '.': processed->content.OperatorType = OperatorType_T::get;       break;
+                        case '[': processed->content.OperatorType = OperatorType_T::array_get; break;
 
-                        case '\2': processed->content.OperatorType = OperatorType_T::vec2; break;
-                        case '\3': processed->content.OperatorType = OperatorType_T::vec3; break;
-                        case '\4': processed->content.OperatorType = OperatorType_T::vec4; break;
+                        case '\2': processed->content.OperatorType = OperatorType_T::vec2;     break;
+                        case '\3': processed->content.OperatorType = OperatorType_T::vec3;     break;
+                        case '\4': processed->content.OperatorType = OperatorType_T::vec4;     break;
 
 						default: goto other_cases;
 					}
@@ -510,8 +561,7 @@ namespace math_parser
                                 issues.push_back(str);
                                 break;
                             }
-                            }
-                            
+                            }      
                         }
                         else
                         {
@@ -593,6 +643,11 @@ namespace math_parser
                     return struc.second.Members[OwnedNodes[1]->content.Byte].second;
                 }
             }
+            //Get from array
+            else if (content.OperatorType == OperatorType_T::array_get)
+            {
+                return Temp->arrays.at(OwnedNodes[0]->content.Variable).type;
+            }
             else if (content.OperatorType == OperatorType_T::vec2)
                 return version->FindTypeIdFromName({ (char*)"vec2", 4 });
             else if (content.OperatorType == OperatorType_T::vec3)
@@ -652,7 +707,7 @@ namespace math_parser
             bool negative = exp.begin[i] == '-';
             bool non_special_chars_occurred = false;
             bool vector = 0;
-            int deep = 1;
+            int deep = 0;
 
             //Iterate through arg
             do
@@ -661,7 +716,7 @@ namespace math_parser
                 {
                 case ' ': case '+': case '-': case '*': case '/': case '^': case ':':
                 {
-                    if (!negative || (non_special_chars_occurred))
+                    if (!negative || (non_special_chars_occurred) && deep == 0)
                         goto end; break;
                 }
                 case '.':
@@ -685,6 +740,13 @@ namespace math_parser
                         }
                     }
                     break;
+                case '[':
+                {
+                    if (i != 0)
+                        while (exp.begin[i] != ']' && i != bound - 1)
+                            i++;
+                    break;
+                }
                 default:
                 {
                     non_special_chars_occurred = true;

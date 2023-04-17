@@ -62,6 +62,17 @@ struct Compiling_Temp
 	*/
 	std::vector<std::pair<utils::TextPointer, std::pair<int, int>>> Variables{};
 	std::vector<std::pair<utils::TextPointer, int>> ExternVariables;
+
+	struct Array
+	{
+		int type;
+		int size;
+		Array(int _type, int _size) : type(_type), size(_size) {};
+	};
+
+	//Variable Id, Data
+	std::map<int, Array> arrays;
+
 	//Name, Type, Sender
 	std::vector<std::pair<utils::TextPointer, std::pair<int, ShaderType_t>>> Sent;
 	/*

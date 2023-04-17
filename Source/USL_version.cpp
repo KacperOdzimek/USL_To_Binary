@@ -202,6 +202,10 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
         auto s_w = utils::TextPointer::Get((char*)(sig->sig + s_i));
         auto c_w = utils::TextPointer::Get(t + c_i);
 
+        //Include brackets
+        if (*s_w.begin == ']') s_w.length++;
+        if (*c_w.begin == ']') c_w.length++;
+
         //Check arguments fields
         if (s_w.begin[0] == '?')
         {
@@ -420,47 +424,38 @@ Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* si
                     this, issues);
                 c_i = iterator - t - c_w.length - 1;
                 EndCase
-
-
-            //Expressions
-            case '0': case '1': case '2': case '3': case '4':
-            case '5': case '6': case '7': case '8': case '9': {
-                int type_id = std::atoi(s_w.begin + 1);
-
-                //first word after expression symbol
-                auto x = utils::TextPointer::Get((char*)(sig->sig + s_i + s_w.length + 1));
-                int expr_size = 0;
-                if (x.length != 0)
+            //Integer constant
+            case 'i': {
+                auto int_type = FindTypeIdFromName({ (char*)"int", 3 });
+                result = Types[int_type]->verify(c_w);
+                if (result)
                 {
-                    // 0 + 1 end
-                    // ?0 end
-                    // this loop watch for keyword ending expression
-
-                    int i = 0;
-                    do
-                    {
-                        if (*(c_w.begin + expr_size + i) != *(x.begin + i))
-                        {
-                            expr_size = expr_size + i + 1;
-                            i = 0;
-                        }
-                        else
-                        {
-                            i++;
-                            if (x.length == i)
-                                //Break loop
-                                goto leave;
-                        }
-                    } while (true);
+                    auto bin = Types[int_type]->to_binary(c_w);
+                    Temp->FieldsBuffor.insert(Temp->FieldsBuffor.end(), bin.begin(), bin.end());
                 }
-                else
-                    expr_size = s - c_i - 1;
-
-                //At this point we have size of our expression
-                leave:
-
+                c_i--;
                 EndCase
+            //Array literal (element type = Temp->FieldsBuffor[first_type_id], size = Temp->FieldsBuffor[1-4])
+            case 'a': {
+                int type = Temp->FieldsBuffor[first_type_id];
+                auto ptr = &Temp->FieldsBuffor[1];
+                std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
+                int size; memcpy(&size, &(*as_bin.begin()), 4);
 
+                auto args = utils::ExtrudeArguments(c_w.begin, utils::BracketsType::square);
+
+                if (args.first.size() > size)
+                    issues.push_back("Too many arguments for array literal");
+                else if (args.first.size() < size)
+                    issues.push_back("Too little arguments for array literal");
+                else
+                    for (auto& arg : args.first)
+                        math_parser::ParseMath(arg, type, this, issues);
+
+                result = issues.size() == 0;
+
+                c_i = s - c_w.length - 1;
+                EndCase
 #undef EndCase	
             }
         }

@@ -20,6 +20,8 @@ namespace utils
 
 				*(start + i) == '(' ||
 				*(start + i) == ')' ||
+				*(start + i) == '[' ||
+				*(start + i) == ']' ||
 				*(start + i) == ',' ||
 
 				*(start + i) == ' ')
@@ -153,7 +155,7 @@ namespace utils
 
 		int j = i;
 		bool not_empty = false;
-		while (src[j] != closing_bracket)
+		while (src[j] != closing_bracket && j < 1000)
 		{
 			switch (src[j])
 			{
@@ -168,6 +170,7 @@ namespace utils
 
 		std::vector<TextPointer> result;
 
+		int deep = 0;
 		while (src[i - 1] != closing_bracket)
 		{
 			if (src[i] == ' ') { i++; continue; }
@@ -175,13 +178,19 @@ namespace utils
 			int a = 1;
 			int b = 0;
 
-			while (src[i + b] != ',' && src[i + b] != closing_bracket)
+			while (!(src[i + b] == ',' && deep == 0) && src[i + b] != closing_bracket)
 			{
-				if (src[i + b] != ' ' && src[i + b] != ',' && src[i + b] != closing_bracket)
+				if (src[i + b] != ' ' && !(src[i + b] == ',' && deep == 0) && src[i + b] != closing_bracket)
 				{
 					a = b + 1;
 				}
+				switch (src[i + b])
+				{
+				case '(': case '{': case '[': case '<': deep++; break;
+				case ')': case '}': case ']': case '>': deep--; break;
+				}
 				b++;
+				if (b == 1000) return { {},0 };
 			}
 
 			result.push_back({ (char*)(src + i), a == 0 ? 1 : a });

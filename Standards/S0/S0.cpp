@@ -19,16 +19,19 @@ namespace Standards
 			Compiling Conditions
 		*/
 
-		V->AddCondition("ContainsVertexShader",  "Lack of Vertex Shader!");
-		V->AddCondition("ContainsPixelShader",   "Lack of Pixel Shader!");
-		V->AddCondition("VertexLayoutSpecified", "Lack of Vertex Layout Specification!");
+		V->AddCondition("ContainsVertexShader",  "Lack of vertex shader.");
+		V->AddCondition("ContainsPixelShader",   "Lack of pixel shader.");
+		V->AddCondition("VertexLayoutSpecified", "Lack of vertex layout specification.");
+
+		V->AddCondition("VertexReturn",			 "Vertex shader must return vertex position.");
+		V->AddCondition("PixelReturn",			 "Pixel shader must return pixel color.");
 
 		/*
 			Basic Types
 		*/
 
-		V->AddType("int", utils::IsInteger, IntegerToBinary);
-		V->AddType("float", utils::IsFloat, FloatToBinary);
+		V->AddType("int",     utils::IsInteger, IntegerToBinary);
+		V->AddType("float",   utils::IsFloat, FloatToBinary);
 
 		V->SetVectorComponentsNames({ 'x', 'y', 'z', 'w' });
 		V->SetGetComponentFromVectorFunction("float", 
@@ -103,6 +106,9 @@ namespace Standards
 				x.insert(x.end(), w.begin(), w.end());
 				return x;
 			});
+
+		V->AddType("array", [](utils::TextPointer& src)	   {return false; }, 
+							[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{};});
 
 		/*
 			Types Conversions
@@ -234,7 +240,16 @@ namespace Standards
 			});
 
 		//return instruction
-		V->AddSignature("return ?r", { Context_t::Shader, Context_t::CustomFunction }, nullptr);
+		V->AddSignature("return ?r", { Context_t::Shader, Context_t::CustomFunction }, 
+			[V]()
+			{
+				switch (Temp->ShaderType)
+				{
+				case ShaderType_t::VertexShader: Temp->CompilationConditions.at("VertexReturn") = true; break;
+				case ShaderType_t::PixelShader:  Temp->CompilationConditions.at("PixelReturn") = true;  break;
+				}
+			}
+		);
 
 		//Variable declaration without initialization
 		V->AddSignature("?t ?n", { Context_t::Shader, Context_t::StructDeclaration, Context_t::CustomFunction }, []()
@@ -289,6 +304,58 @@ namespace Standards
 						error += (*(Temp->NamesBuffor[0].begin + i));
 					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
 				}	
+			});
+
+		//Array declaration without initialization
+		V->AddSignature("?t ?n [ ?i ]", { Context_t::Shader, Context_t::CustomFunction }, [V]()
+			{
+				if (!Temp->IsVarValiding(Temp->NamesBuffor[0]))
+				{
+					Temp->Variables.push_back({ Temp->NamesBuffor[0],
+						{V->FindTypeIdFromName({ (char*)"array", 5 }), Temp->Deepness} });
+
+					auto ptr = &Temp->FieldsBuffor[1];
+					std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
+					int i;
+					memcpy(&i, &(*as_bin.begin()), 4);
+
+					std::string str = std::to_string(i);
+
+					Temp->arrays.insert({ (int)Temp->Variables.size() - 1, {(int)Temp->FieldsBuffor[0], i} });
+				}			
+				else
+				{
+					std::string error = "Variable ";
+					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+						error += (*(Temp->NamesBuffor[0].begin + i));
+					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+				}
+			});
+
+		//Array declaration with initialization
+		V->AddSignature("?t ?n [ ?i ] = ?a", { Context_t::Shader, Context_t::CustomFunction }, [V]()
+			{
+				if (!Temp->IsVarValiding(Temp->NamesBuffor[0]))
+				{
+					Temp->Variables.push_back({ Temp->NamesBuffor[0],
+						{V->FindTypeIdFromName({ (char*)"array", 5 }), Temp->Deepness} });
+
+					auto ptr = &Temp->FieldsBuffor[1];
+					std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
+					int i;
+					memcpy(&i, &(*as_bin.begin()), 4);
+
+					std::string str = std::to_string(i);
+
+					Temp->arrays.insert({ (int)Temp->Variables.size() - 1, {(int)Temp->FieldsBuffor[0], i} });
+				}
+				else
+				{
+					std::string error = "Variable ";
+					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+						error += (*(Temp->NamesBuffor[0].begin + i));
+					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+				}
 			});
 
 		//Struct declaration
@@ -349,6 +416,18 @@ namespace Standards
 						error += (*(Temp->NamesBuffor[0].begin + i));
 					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
 				}
+			});
+
+		//Declare geometry shader vertices limit
+		V->AddSignature("using geometry limit ?i ", { Context_t::GlobalScope }, [V]()
+			{
+				
+			});
+
+		//Declare geometry shader output primitive
+		V->AddSignature("using geometry type ?n", { Context_t::GlobalScope }, [V]()
+			{
+
 			});
 
 		//Send value to another shader

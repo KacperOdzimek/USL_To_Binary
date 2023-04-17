@@ -4,18 +4,58 @@
 
 bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version* version, std::vector<std::string>& issues)
 {
-    //Part 1 - Check if amount of '(' is equal to amount of ')'
-    int deep = 0;
+    //Part 1 - Check if amount of '(' / '[' is equal to amount of ')' / ']'
+    std::vector<char> brackets_quary;
+    int p_open = 0;
+    int p_end  = 0;
+    int s_open = 0;
+    int s_end  = 0;
     for (int i = 0; i < exp.length; i++)
+    {
         if (exp.begin[i] == '(')
-            ++deep;
+        {
+            brackets_quary.push_back('(');
+            ++p_open;
+        }
+        else if (exp.begin[i] == '[')
+        {
+            brackets_quary.push_back('[');
+            ++s_open;
+        }
         else if (exp.begin[i] == ')')
-            --deep;
+        {
+            ++p_end;
+            if (brackets_quary.size() != 0)
+            {
+                if (brackets_quary.back() != '(')
+                    issues.push_back("Invalid bracket");
+                brackets_quary.erase(brackets_quary.end() - 1);
+            }       
+        }
+        else if (exp.begin[i] == ']')
+        {
+            ++s_end;
+            if (brackets_quary.size() != 0)
+            {
+                if (brackets_quary.back() != '[')
+                    issues.push_back("Invalid bracket");
+                brackets_quary.erase(brackets_quary.end() - 1);
+            }     
+        }
+    }
 
-    if (deep > 0)
-        issues.push_back("Missing character ')' [" + std::to_string(deep) + " chars missing]");
-    else if (deep < 0)
-        issues.push_back("Missing character '(' [" + std::to_string(std::abs(deep)) + " chars missing]");
+    if (p_open > p_end)
+        issues.push_back("Missing character ')' [" + std::to_string(p_open - p_end) + " chars missing]");
+    else if (p_open < p_end)
+        issues.push_back("Missing character '(' [" + std::to_string(p_end - p_open) + " chars missing]");
+
+    if (s_open > s_end)
+        issues.push_back("Missing character ']' [" + std::to_string(s_open - s_end) + " chars missing]");
+    else if (s_open < s_end)
+        issues.push_back("Missing character '[' [" + std::to_string(s_end - s_open) + " chars missing]");
+
+    if (issues.size()) 
+        return true;
 
     //Part 2 - generate raw tree
     RawExpressionTree* RawTree;
