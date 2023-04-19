@@ -228,7 +228,17 @@ namespace Standards
 
 		V->AddSignature("PixelShader:", { Context_t::GlobalScope }, [V]()
 			{
+				if (Temp->CompilationConditions.at("ContainsPixelShader"))
+					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one pixel shader");
+
+				if (!Temp->CompilationConditions.at("ContainsVertexShader"))
+					Temp->SignatureWritedFunctionErrors.push_back("Pixel shader must be definied after the vertex shader");
+
+				if (Temp->CompilationConditions.find("ContainsGeometryShader") != Temp->CompilationConditions.end())
+					Temp->SignatureWritedFunctionErrors.push_back("Pixel shader must be definied after the geometry shader");
+
 				Temp->CompilationConditions.at("ContainsPixelShader") = true;
+
 				Temp->Deepness++;
 				Temp->Context = Context_t::Shader;
 				Temp->ShaderType = ShaderType_t::PixelShader;
@@ -237,6 +247,32 @@ namespace Standards
 					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
 
 				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
+			});
+
+		V->AddSignature("GeometryShader:", { Context_t::GlobalScope }, [V]()
+			{
+
+				if (!Temp->CompilationConditions.at("ContainsVertexShader"))
+					Temp->SignatureWritedFunctionErrors.push_back("Geometry shader must be definied after the vertex shader");
+
+				if (Temp->CompilationConditions.find("ContainsGeometryShader") != Temp->CompilationConditions.end())
+					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one geometry shader");
+				else
+					Temp->CompilationConditions.insert({"ContainsGeometryShader", true});
+
+				Temp->Deepness++;
+				Temp->Context = Context_t::Shader;
+				Temp->ShaderType = ShaderType_t::GeometryShader;
+				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
+
+				/* CREATE ARRAY OF VERTEX FROM VERTEX SHADER
+				* 				utils::TextPointer name((char*)"Vertex", 6);
+				Temp->Variables.push_back({ name, {Temp->layout_type_id, 1} });
+				*/
+
+
+				for (auto& ext : Temp->ExternVariables)
+					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
 			});
 
 		//return instruction

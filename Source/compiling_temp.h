@@ -18,7 +18,7 @@ enum class Context_t
 
 enum class ShaderType_t : uint8_t
 {
-	VertexShader, PixelShader
+	VertexShader, PixelShader, GeometryShader
 };
 
 struct Struct
