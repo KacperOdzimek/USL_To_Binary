@@ -153,7 +153,7 @@ namespace Standards
 		ScalarPrecomputation(type_a, type_b, type_return, div, /)																		\
 		V->AllowPrecomputation(#type_a, #type_b, #type_return, OperatorType_T::pow,														\
 		[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {																		\
-		return Power(TextToFloat(a_src), TextToFloat(b_src));																				\
+		return Power(TextToFloat(a_src), TextToFloat(b_src));																			\
 			});																															\
 
 		ScalarPrecomputationBundle(int, int, int)
@@ -184,6 +184,27 @@ namespace Standards
 		VectorPrecomputationsBundle(vec4, int)
 		VectorPrecomputationsBundle(vec4, float)
 
+#define VectorXVectorPrecomputation(vec_type, operato)											\
+		V->AllowPrecomputation(#vec_type, #vec_type, #vec_type, OperatorType_T::operato,		\
+			[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {							\
+			return std::pair<int, std::string>{V->FindTypeIdFromName({ (char*)#vec_type, 4 }),  \
+			VectorXVectorOperation(a_src, b_src, OperatorType_T::operato, V)};					\
+			});																					\
+
+#define VectorXVectorPrecomputationsBundle(vec_name)	\
+		VectorXVectorPrecomputation(vec_name, add)		\
+		VectorXVectorPrecomputation(vec_name, sub)		\
+		VectorXVectorPrecomputation(vec_name, mul)		\
+		VectorXVectorPrecomputation(vec_name, div)		\
+		VectorXVectorPrecomputation(vec_name, pow)		\
+
+VectorXVectorPrecomputationsBundle(vec2)
+VectorXVectorPrecomputationsBundle(vec3)
+VectorXVectorPrecomputationsBundle(vec4)
+
+#undef VectorXVectorPrecomputationsBundle
+#undef VectorXVectorPrecomputation
+
 #undef VectorPrecomputation
 #undef VectorPrecomputationsBundle
 
@@ -211,7 +232,7 @@ namespace Standards
 					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one vertex shader");
 
 				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
-					Temp->SignatureWritedFunctionErrors.push_back("Vertex shader program cannot be created when vertex layout is not specified");
+					Temp->SignatureWritedFunctionErrors.push_back("Vertex shader cannot be created if vertex layout is not specified");
 
 				Temp->CompilationConditions.at("ContainsVertexShader") = true;
 				Temp->Deepness++;
@@ -257,18 +278,46 @@ namespace Standards
 				else
 					Temp->CompilationConditions.insert({"ContainsGeometryShader", true});
 
-				Temp->Deepness++;
-				Temp->Context = Context_t::Shader;
-				Temp->ShaderType = ShaderType_t::GeometryShader;
-				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
+				if (Temp->geometry_shader_input_primitive_id == -1)
+					Temp->SignatureWritedFunctionErrors.push_back(
+						"Geometry shader cannot be created if input primitive is not specified");
+				if (Temp->geometry_shader_output_primitive_id == -1)
+					Temp->SignatureWritedFunctionErrors.push_back(
+						"Geometry shader cannot be created if output primitive is not specified");
+				if (Temp->geometry_shader_output_vertices_limit == -1)
+					Temp->SignatureWritedFunctionErrors.push_back(
+						"Geometry shader cannot be created if vertices limit is not specified");
 
-				/* CREATE ARRAY OF VERTICES FROM VERTEX SHADER
-				* 				utils::TextPointer name((char*)"Vertex", 6);
-				Temp->Variables.push_back({ name, {Temp->layout_type_id, 1} });
-				*/
+				if (Temp->geometry_shader_input_primitive_id != -1
+					&& Temp->geometry_shader_output_vertices_limit != -1
+					&& Temp->geometry_shader_output_primitive_id != -1)
+				{
+					Temp->Deepness++;
+					Temp->Context = Context_t::Shader;
+					Temp->ShaderType = ShaderType_t::GeometryShader;
+					Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
 
-				for (auto& ext : Temp->ExternVariables)
-					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+
+					/* CREATE ARRAY OF VERTICES FROM VERTEX SHADER
+					* 				utils::TextPointer name((char*)"Vertex", 6);
+					Temp->Variables.push_back({ name, {Temp->layout_type_id, 1} });
+					*/
+					int array_size;
+					switch (Temp->geometry_shader_input_primitive_id)
+					{
+					case 0: array_size = 1; break;
+					case 1: array_size = 2; break;
+					case 2: array_size = 3; break;
+					}
+
+					utils::TextPointer name((char*)"Vertices", 8);
+
+					Temp->Variables.push_back({ name, {V->FindTypeIdFromName({ (char*)"array", 5 }), 1} });
+					Temp->arrays.insert({ 0, {V->FindTypeIdFromName({ (char*)"vec4", 4 }), array_size} });
+
+					for (auto& ext : Temp->ExternVariables)
+						Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+				}
 			});
 
 		//return instruction
@@ -457,6 +506,8 @@ namespace Standards
 				std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
 				int i; memcpy(&i, &(*as_bin.begin()), 4);
 				Temp->geometry_shader_output_vertices_limit = i;
+				if (i <= 0)
+					Temp->SignatureWritedFunctionErrors.push_back("Vertices limit cannot be lower than 1");
 			});
 
 		//Declare geometry shader input primitive
