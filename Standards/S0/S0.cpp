@@ -153,7 +153,7 @@ namespace Standards
 		ScalarPrecomputation(type_a, type_b, type_return, div, /)																		\
 		V->AllowPrecomputation(#type_a, #type_b, #type_return, OperatorType_T::pow,														\
 		[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {																		\
-		return Power(TextToFloat(a_src), TextToFloat(b_src));																				\
+		return Power(TextToFloat(a_src), TextToFloat(b_src));																			\
 			});																															\
 
 		ScalarPrecomputationBundle(int, int, int)
@@ -184,6 +184,27 @@ namespace Standards
 		VectorPrecomputationsBundle(vec4, int)
 		VectorPrecomputationsBundle(vec4, float)
 
+#define VectorXVectorPrecomputation(vec_type, operato)											\
+		V->AllowPrecomputation(#vec_type, #vec_type, #vec_type, OperatorType_T::operato,		\
+			[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {							\
+			return std::pair<int, std::string>{V->FindTypeIdFromName({ (char*)#vec_type, 4 }),  \
+			VectorXVectorOperation(a_src, b_src, OperatorType_T::operato, V)};					\
+			});																					\
+
+#define VectorXVectorPrecomputationsBundle(vec_name)	\
+		VectorXVectorPrecomputation(vec_name, add)		\
+		VectorXVectorPrecomputation(vec_name, sub)		\
+		VectorXVectorPrecomputation(vec_name, mul)		\
+		VectorXVectorPrecomputation(vec_name, div)		\
+		VectorXVectorPrecomputation(vec_name, pow)		\
+
+VectorXVectorPrecomputationsBundle(vec2)
+VectorXVectorPrecomputationsBundle(vec3)
+VectorXVectorPrecomputationsBundle(vec4)
+
+#undef VectorXVectorPrecomputationsBundle
+#undef VectorXVectorPrecomputation
+
 #undef VectorPrecomputation
 #undef VectorPrecomputationsBundle
 
@@ -211,7 +232,7 @@ namespace Standards
 					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one vertex shader");
 
 				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
-					Temp->SignatureWritedFunctionErrors.push_back("Vertex shader program cannot be created when vertex layout is not specified");
+					Temp->SignatureWritedFunctionErrors.push_back("Vertex shader cannot be created if vertex layout is not specified");
 
 				Temp->CompilationConditions.at("ContainsVertexShader") = true;
 				Temp->Deepness++;
@@ -228,7 +249,14 @@ namespace Standards
 
 		V->AddSignature("PixelShader:", { Context_t::GlobalScope }, [V]()
 			{
+				if (Temp->CompilationConditions.at("ContainsPixelShader"))
+					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one pixel shader");
+
+				if (!Temp->CompilationConditions.at("ContainsVertexShader"))
+					Temp->SignatureWritedFunctionErrors.push_back("Pixel shader must be definied after the vertex shader");
+
 				Temp->CompilationConditions.at("ContainsPixelShader") = true;
+
 				Temp->Deepness++;
 				Temp->Context = Context_t::Shader;
 				Temp->ShaderType = ShaderType_t::PixelShader;
@@ -237,6 +265,59 @@ namespace Standards
 					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
 
 				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
+			});
+
+		V->AddSignature("GeometryShader:", { Context_t::GlobalScope }, [V]()
+			{
+
+				if (!Temp->CompilationConditions.at("ContainsVertexShader"))
+					Temp->SignatureWritedFunctionErrors.push_back("Geometry shader must be definied after the vertex shader");
+
+				if (Temp->CompilationConditions.find("ContainsGeometryShader") != Temp->CompilationConditions.end())
+					Temp->SignatureWritedFunctionErrors.push_back("Shader program can contain only one geometry shader");
+				else
+					Temp->CompilationConditions.insert({"ContainsGeometryShader", true});
+
+				if (Temp->geometry_shader_input_primitive_id == -1)
+					Temp->SignatureWritedFunctionErrors.push_back(
+						"Geometry shader cannot be created if input primitive is not specified");
+				if (Temp->geometry_shader_output_primitive_id == -1)
+					Temp->SignatureWritedFunctionErrors.push_back(
+						"Geometry shader cannot be created if output primitive is not specified");
+				if (Temp->geometry_shader_output_vertices_limit == -1)
+					Temp->SignatureWritedFunctionErrors.push_back(
+						"Geometry shader cannot be created if vertices limit is not specified");
+
+				if (Temp->geometry_shader_input_primitive_id != -1
+					&& Temp->geometry_shader_output_vertices_limit != -1
+					&& Temp->geometry_shader_output_primitive_id != -1)
+				{
+					Temp->Deepness++;
+					Temp->Context = Context_t::Shader;
+					Temp->ShaderType = ShaderType_t::GeometryShader;
+					Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
+
+
+					/* CREATE ARRAY OF VERTICES FROM VERTEX SHADER
+					* 				utils::TextPointer name((char*)"Vertex", 6);
+					Temp->Variables.push_back({ name, {Temp->layout_type_id, 1} });
+					*/
+					int array_size;
+					switch (Temp->geometry_shader_input_primitive_id)
+					{
+					case 0: array_size = 1; break;
+					case 1: array_size = 2; break;
+					case 2: array_size = 3; break;
+					}
+
+					utils::TextPointer name((char*)"Vertices", 8);
+
+					Temp->Variables.push_back({ name, {V->FindTypeIdFromName({ (char*)"array", 5 }), 1} });
+					Temp->arrays.insert({ 0, {V->FindTypeIdFromName({ (char*)"vec4", 4 }), array_size} });
+
+					for (auto& ext : Temp->ExternVariables)
+						Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+				}
 			});
 
 		//return instruction
@@ -419,30 +500,94 @@ namespace Standards
 			});
 
 		//Declare geometry shader vertices limit
-		V->AddSignature("using geometry limit ?i ", { Context_t::GlobalScope }, [V]()
+		V->AddSignature("using geometry limit ?i", { Context_t::GlobalScope }, [V]()
 			{
-				
+				auto ptr = &Temp->FieldsBuffor[0];
+				std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
+				int i; memcpy(&i, &(*as_bin.begin()), 4);
+				Temp->geometry_shader_output_vertices_limit = i;
+				if (i <= 0)
+					Temp->SignatureWritedFunctionErrors.push_back("Vertices limit cannot be lower than 1");
+			});
+
+		//Declare geometry shader input primitive
+		V->AddSignature("using geometry input primitive ?n ?n", { Context_t::GlobalScope }, [V]()
+			{
+				if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"point", 5 })
+					Temp->geometry_shader_input_primitive_id = 0;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"line", 4 })
+					Temp->geometry_shader_input_primitive_id = 1;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"triangle", 8 })
+					Temp->geometry_shader_input_primitive_id = 2;
+				else
+					Temp->SignatureWritedFunctionErrors.push_back("No such primitive");
+				Temp->pass_to_binary_buffor.push_back((uint8_t)Temp->geometry_shader_input_primitive_id);
 			});
 
 		//Declare geometry shader output primitive
-		V->AddSignature("using geometry type ?n", { Context_t::GlobalScope }, [V]()
+		V->AddSignature("using geometry output primitive ?n ?n", { Context_t::GlobalScope }, [V]()
 			{
+				if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"point", 5 })
+					Temp->geometry_shader_output_primitive_id = 0;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"line", 4 } &&
+					Temp->NamesBuffor[1] == utils::TextPointer{ (char*)"strip", 5 })
+					Temp->geometry_shader_output_primitive_id = 1;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"triangle", 8 } &&
+					Temp->NamesBuffor[1] == utils::TextPointer{ (char*)"strip", 5 })
+					Temp->geometry_shader_output_primitive_id = 2;
+				else
+					Temp->SignatureWritedFunctionErrors.push_back("No such primitive");
+				Temp->pass_to_binary_buffor.push_back((uint8_t)Temp->geometry_shader_output_primitive_id);
+			});
 
+		//Finish drawing primitive
+		V->AddSignature("FinishPrimitive", { Context_t::Shader }, [V]()
+			{
+				if (Temp->ShaderType != ShaderType_t::GeometryShader)
+					Temp->SignatureWritedFunctionErrors.push_back("Invalid Context");
 			});
 
 		//Send value to another shader
 		V->AddSignature("send ?t ?n = ?e", { Context_t::Shader }, [V]()
 			{
-				for (int i = 0; i < Temp->Sent.size(); i++)
-					if (Temp->Sent[i].first == Temp->NamesBuffor[0])
+				if (Temp->ShaderType != ShaderType_t::GeometryShader)
+				{
+					for (int i = 0; i < Temp->Sent.size(); i++)
+						if (Temp->Sent[i].first == Temp->NamesBuffor[0])
+						{
+							std::string error = "Already sent value with name: ";
+							for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+								error += (*(Temp->NamesBuffor[0].begin + i));
+							Temp->SignatureWritedFunctionErrors.push_back(error);
+							break;
+						}
+					Temp->Sent.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+				}
+				else
+				{
+					bool add_var = true;
+					uint8_t overwriten_sent_id = -1;
+					for (int i = 0; i < Temp->Sent.size(); i++)
+						if (Temp->Sent[i].first == Temp->NamesBuffor[0]
+							&& Temp->Sent[i].second.second == ShaderType_t::GeometryShader)
+						{
+							overwriten_sent_id = i;
+							add_var = false;
+							break;
+						}
+							
+					if (add_var)
+						Temp->Sent.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+					else
 					{
-						std::string error = "Already sent value with name: ";
-						for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
-							error += (*(Temp->NamesBuffor[0].begin + i));
-						Temp->SignatureWritedFunctionErrors.push_back(error);
-					}	
-				Temp->Sent.push_back({Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+						Temp->pass_to_binary_buffor.push_back(overwriten_sent_id);
+						throw (int)1;
+					}
+				}
 			});
+
+		//Overwrite of send in geometry shader
+		V->AddSignature("send ?t ?n = ?e", { Context_t::Shader }, [V]() {});
 
 		//Catch value sent by other shader
 		V->AddSignature("catch ?t ?n", { Context_t::Shader }, [V]()
@@ -451,7 +596,30 @@ namespace Standards
 					if (Temp->Sent[i].first == Temp->NamesBuffor[0] 
 						&& Temp->FieldsBuffor[0] == Temp->Sent[i].second.first)
 					{
-						Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
+						if (Temp->Sent[i].second.second == ShaderType_t::VertexShader 
+					&& Temp->ShaderType == ShaderType_t::PixelShader
+					&& Temp->CompilationConditions.find("ContainsGeometryShader") != Temp->CompilationConditions.end())
+							Temp->SignatureWritedFunctionErrors.push_back(
+								"Cannot catch value sent in vertex shader in pixel shader if geometry shader exists");
+
+						if (Temp->ShaderType == ShaderType_t::GeometryShader)
+						{
+							Temp->Variables.push_back({ Temp->NamesBuffor[0],
+							{V->FindTypeIdFromName({ (char*)"array", 5 }), Temp->Deepness} });
+
+							int array_size;
+							switch (Temp->geometry_shader_input_primitive_id)
+							{
+							case 0: array_size = 1; break;
+							case 1: array_size = 2; break;
+							case 2: array_size = 3; break;
+							}
+
+							Temp->arrays.insert({ (int)Temp->Variables.size() - 1, {(int)Temp->FieldsBuffor[0], array_size
+								} });
+						}
+						else
+							Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
 						Temp->pass_to_binary_buffor.push_back(i);
 					}
 					else if (Temp->Sent[i].first == Temp->NamesBuffor[0])

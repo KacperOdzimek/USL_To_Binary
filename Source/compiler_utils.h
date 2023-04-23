@@ -29,8 +29,8 @@ namespace utils
 		int length = 0;
 	 TextPointer() {};
 	 TextPointer(char* _begin, int _length) : begin(_begin), length(_length) {};
-		bool operator == (TextPointer& other) const;
-		bool operator != (TextPointer& other) const;
+		bool operator == (const TextPointer other) const;
+		bool operator != (const TextPointer other) const;
 		static TextPointer Get(char* start);
 #ifdef DEBUG
 		void Print();

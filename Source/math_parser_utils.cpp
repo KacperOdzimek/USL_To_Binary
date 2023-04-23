@@ -646,7 +646,9 @@ namespace math_parser
             //Get from array
             else if (content.OperatorType == OperatorType_T::array_get)
             {
-                return Temp->arrays.at(OwnedNodes[0]->content.Variable).type;
+                if (Temp->arrays.find(OwnedNodes[0]->content.Variable) != Temp->arrays.end())
+                    return Temp->arrays.at(OwnedNodes[0]->content.Variable).type;
+                return -1;
             }
             else if (content.OperatorType == OperatorType_T::vec2)
                 return version->FindTypeIdFromName({ (char*)"vec2", 4 });

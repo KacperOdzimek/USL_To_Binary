@@ -18,7 +18,6 @@ private:
 	std::vector<Type*> Types{};
 
 public:
-	Version() {};
 	~Version() { 
 		for (Signature* s : Signatures) delete s;
 		for (Type* t : Types) delete t;
@@ -110,7 +109,7 @@ public:
 	};
 
 private:
-	IsMatchingResult IsMatching(char* t, uint64_t s, Signature* sig);
+	IsMatchingResult IsMatching(char* t, int s, Signature* sig);
 
 public:
 	struct MatchResult

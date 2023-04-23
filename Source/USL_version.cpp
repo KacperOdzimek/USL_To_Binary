@@ -169,7 +169,7 @@ std::vector<std::string> Version::GetConditionsNames()
     return vector;
 }
 
-Version::IsMatchingResult Version::IsMatching(char* t, uint64_t s, Signature* sig)
+Version::IsMatchingResult Version::IsMatching(char* t, int s, Signature* sig)
 {
     bool context_matching = true;
     std::vector<std::string> issues;

@@ -112,6 +112,43 @@ namespace Standards
 			result.push_back(')');
 			return std::string(result.begin(), result.end());
 		}
+
+		std::string VectorXVectorOperation(utils::TextPointer a_src, utils::TextPointer b_src, OperatorType_T op, Version* V)
+		{
+			auto v1 = utils::ExtrudeArguments(a_src.begin, utils::BracketsType::parentheses).first;
+			auto v2 = utils::ExtrudeArguments(b_src.begin, utils::BracketsType::parentheses).first;
+			std::vector<float> return_vector;
+
+			for (int i = 0; i < v1.size(); i++)
+			{
+				float arg1 = TextToFloat(v1.at(i));
+				float arg2 = TextToFloat(v2.at(i));
+				switch (op)
+				{
+				case OperatorType_T::add:
+					return_vector.push_back(arg1 + arg2); break;
+				case OperatorType_T::sub:
+					return_vector.push_back(arg1 - arg2); break;
+				case OperatorType_T::mul:
+					return_vector.push_back(arg1 * arg2); break;
+				case OperatorType_T::div:
+					return_vector.push_back(arg1 / arg2); break;
+				case OperatorType_T::pow:
+					return_vector.push_back(std::pow(arg1, arg2)); break;
+				}
+			}
+
+			std::string return_vector_str = "(";
+			for (auto& num : return_vector)
+			{
+				std::string num_str = std::to_string(num);
+				num_str.erase(num_str.find_last_not_of('0') + 1, std::string::npos);
+				num_str.erase(num_str.find_last_not_of('.') + 1, std::string::npos);
+				return_vector_str.insert(return_vector_str.end(), num_str.begin(), num_str.end());
+			}
+			return_vector_str += ')';
+			return return_vector_str;
+		}
 	}
 }
 

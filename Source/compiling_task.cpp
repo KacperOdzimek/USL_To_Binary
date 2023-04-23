@@ -39,12 +39,20 @@ void CompilingTask::Start(void* source, int size)
 			if (result.success)
 			{
 				binary.push_back(result.matching_signature->id);
+				int sig_pos = binary.size() - 1;
 				//Add information about fields' identyficators
 				for (uint8_t b : Temp->FieldsBuffor)
 					binary.push_back(b);
 
 				Temp->SignatureWritedFunctionErrors.clear();
-				result.matching_signature->LeaveTranslatorTips();
+				try
+				{
+					result.matching_signature->LeaveTranslatorTips();
+				}
+				catch (int offset)
+				{
+					binary[sig_pos] += offset;
+				}	
 
 				for (auto& v : Temp->pass_to_binary_buffor)
 					binary.push_back(v);

@@ -12,5 +12,6 @@ namespace Standards
 		int TextToInt(utils::TextPointer src);
 		float TextToFloat(utils::TextPointer src);
 		std::string VectorXScalarOperation(utils::TextPointer a_src, utils::TextPointer b_src, OperatorType_T op, Version* V);
+		std::string VectorXVectorOperation(utils::TextPointer a_src, utils::TextPointer b_src, OperatorType_T op, Version* V);
 	}
 }
