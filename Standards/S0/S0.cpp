@@ -602,7 +602,24 @@ VectorXVectorPrecomputationsBundle(vec4)
 							Temp->SignatureWritedFunctionErrors.push_back(
 								"Cannot catch value sent in vertex shader in pixel shader if geometry shader exists");
 
-						Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
+						if (Temp->ShaderType == ShaderType_t::GeometryShader)
+						{
+							Temp->Variables.push_back({ Temp->NamesBuffor[0],
+							{V->FindTypeIdFromName({ (char*)"array", 5 }), Temp->Deepness} });
+
+							int array_size;
+							switch (Temp->geometry_shader_input_primitive_id)
+							{
+							case 0: array_size = 1; break;
+							case 1: array_size = 2; break;
+							case 2: array_size = 3; break;
+							}
+
+							Temp->arrays.insert({ (int)Temp->Variables.size() - 1, {(int)Temp->FieldsBuffor[0], array_size
+								} });
+						}
+						else
+							Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
 						Temp->pass_to_binary_buffor.push_back(i);
 					}
 					else if (Temp->Sent[i].first == Temp->NamesBuffor[0])
