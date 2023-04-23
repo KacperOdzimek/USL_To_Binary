@@ -31,7 +31,7 @@ namespace utils
 		return TextPointer(start + spaces, (int)i - spaces);
 	}
 
-	bool TextPointer::operator == (TextPointer& other) const
+	bool TextPointer::operator == (const TextPointer other) const
 	{
 		if (other.length != length) return false;
 		for (int i = 0; i < length; i++)
@@ -40,7 +40,7 @@ namespace utils
 		return true;
 	}
 
-	bool TextPointer::operator != (TextPointer& other) const
+	bool TextPointer::operator != (const TextPointer other) const
 	{
 		return !(*this == other);
 	};

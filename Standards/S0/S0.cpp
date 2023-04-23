@@ -234,9 +234,6 @@ namespace Standards
 				if (!Temp->CompilationConditions.at("ContainsVertexShader"))
 					Temp->SignatureWritedFunctionErrors.push_back("Pixel shader must be definied after the vertex shader");
 
-				if (Temp->CompilationConditions.find("ContainsGeometryShader") != Temp->CompilationConditions.end())
-					Temp->SignatureWritedFunctionErrors.push_back("Pixel shader must be definied after the geometry shader");
-
 				Temp->CompilationConditions.at("ContainsPixelShader") = true;
 
 				Temp->Deepness++;
@@ -265,11 +262,10 @@ namespace Standards
 				Temp->ShaderType = ShaderType_t::GeometryShader;
 				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
 
-				/* CREATE ARRAY OF VERTEX FROM VERTEX SHADER
+				/* CREATE ARRAY OF VERTICES FROM VERTEX SHADER
 				* 				utils::TextPointer name((char*)"Vertex", 6);
 				Temp->Variables.push_back({ name, {Temp->layout_type_id, 1} });
 				*/
-
 
 				for (auto& ext : Temp->ExternVariables)
 					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
@@ -455,15 +451,49 @@ namespace Standards
 			});
 
 		//Declare geometry shader vertices limit
-		V->AddSignature("using geometry limit ?i ", { Context_t::GlobalScope }, [V]()
+		V->AddSignature("using geometry limit ?i", { Context_t::GlobalScope }, [V]()
 			{
-				
+				auto ptr = &Temp->FieldsBuffor[0];
+				std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
+				int i; memcpy(&i, &(*as_bin.begin()), 4);
+				Temp->geometry_shader_output_vertices_limit = i;
+			});
+
+		//Declare geometry shader input primitive
+		V->AddSignature("using geometry input primitive ?n ?n", { Context_t::GlobalScope }, [V]()
+			{
+				if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"point", 5 })
+					Temp->geometry_shader_input_primitive_id = 0;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"line", 4 })
+					Temp->geometry_shader_input_primitive_id = 1;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"triangle", 8 })
+					Temp->geometry_shader_input_primitive_id = 2;
+				else
+					Temp->SignatureWritedFunctionErrors.push_back("No such primitive");
+				Temp->pass_to_binary_buffor.push_back((uint8_t)Temp->geometry_shader_input_primitive_id);
 			});
 
 		//Declare geometry shader output primitive
-		V->AddSignature("using geometry type ?n", { Context_t::GlobalScope }, [V]()
+		V->AddSignature("using geometry output primitive ?n ?n", { Context_t::GlobalScope }, [V]()
 			{
+				if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"point", 5 })
+					Temp->geometry_shader_output_primitive_id = 0;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"line", 4 } &&
+					Temp->NamesBuffor[1] == utils::TextPointer{ (char*)"strip", 5 })
+					Temp->geometry_shader_output_primitive_id = 1;
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"triangle", 8 } &&
+					Temp->NamesBuffor[1] == utils::TextPointer{ (char*)"strip", 5 })
+					Temp->geometry_shader_output_primitive_id = 2;
+				else
+					Temp->SignatureWritedFunctionErrors.push_back("No such primitive");
+				Temp->pass_to_binary_buffor.push_back((uint8_t)Temp->geometry_shader_output_primitive_id);
+			});
 
+		//Finish drawing primitive
+		V->AddSignature("FinishPrimitive", { Context_t::Shader }, [V]()
+			{
+				if (Temp->ShaderType != ShaderType_t::GeometryShader)
+					Temp->SignatureWritedFunctionErrors.push_back("Invalid Context");
 			});
 
 		//Send value to another shader

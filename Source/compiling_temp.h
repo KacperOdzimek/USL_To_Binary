@@ -73,6 +73,10 @@ struct Compiling_Temp
 	//Variable Id, Data
 	std::map<int, Array> arrays;
 
+	int geometry_shader_input_primitive_id  = -1;
+	int geometry_shader_output_primitive_id = -1;
+	int geometry_shader_output_vertices_limit = -1;
+
 	//Name, Type, Sender
 	std::vector<std::pair<utils::TextPointer, std::pair<int, ShaderType_t>>> Sent;
 	/*
