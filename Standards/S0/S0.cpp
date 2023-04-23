@@ -550,16 +550,44 @@ VectorXVectorPrecomputationsBundle(vec4)
 		//Send value to another shader
 		V->AddSignature("send ?t ?n = ?e", { Context_t::Shader }, [V]()
 			{
-				for (int i = 0; i < Temp->Sent.size(); i++)
-					if (Temp->Sent[i].first == Temp->NamesBuffor[0])
+				if (Temp->ShaderType != ShaderType_t::GeometryShader)
+				{
+					for (int i = 0; i < Temp->Sent.size(); i++)
+						if (Temp->Sent[i].first == Temp->NamesBuffor[0])
+						{
+							std::string error = "Already sent value with name: ";
+							for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+								error += (*(Temp->NamesBuffor[0].begin + i));
+							Temp->SignatureWritedFunctionErrors.push_back(error);
+							break;
+						}
+					Temp->Sent.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+				}
+				else
+				{
+					bool add_var = true;
+					uint8_t overwriten_sent_id = -1;
+					for (int i = 0; i < Temp->Sent.size(); i++)
+						if (Temp->Sent[i].first == Temp->NamesBuffor[0]
+							&& Temp->Sent[i].second.second == ShaderType_t::GeometryShader)
+						{
+							overwriten_sent_id = i;
+							add_var = false;
+							break;
+						}
+							
+					if (add_var)
+						Temp->Sent.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+					else
 					{
-						std::string error = "Already sent value with name: ";
-						for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
-							error += (*(Temp->NamesBuffor[0].begin + i));
-						Temp->SignatureWritedFunctionErrors.push_back(error);
-					}	
-				Temp->Sent.push_back({Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->ShaderType} });
+						Temp->pass_to_binary_buffor.push_back(overwriten_sent_id);
+						throw (int)1;
+					}
+				}
 			});
+
+		//Overwrite of send in geometry shader
+		V->AddSignature("send ?t ?n = ?e", { Context_t::Shader }, [V]() {});
 
 		//Catch value sent by other shader
 		V->AddSignature("catch ?t ?n", { Context_t::Shader }, [V]()
@@ -568,6 +596,12 @@ VectorXVectorPrecomputationsBundle(vec4)
 					if (Temp->Sent[i].first == Temp->NamesBuffor[0] 
 						&& Temp->FieldsBuffor[0] == Temp->Sent[i].second.first)
 					{
+						if (Temp->Sent[i].second.second == ShaderType_t::VertexShader 
+					&& Temp->ShaderType == ShaderType_t::PixelShader
+					&& Temp->CompilationConditions.find("ContainsGeometryShader") != Temp->CompilationConditions.end())
+							Temp->SignatureWritedFunctionErrors.push_back(
+								"Cannot catch value sent in vertex shader in pixel shader if geometry shader exists");
+
 						Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], 1} });
 						Temp->pass_to_binary_buffor.push_back(i);
 					}
