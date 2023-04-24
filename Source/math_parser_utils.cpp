@@ -627,6 +627,7 @@ namespace math_parser
         {
             int type_lhs = OwnedNodes[0]->GetNodeDataTypeId(version);
             int type_rhs = OwnedNodes[1]->GetNodeDataTypeId(version);
+
             if (content.OperatorType == OperatorType_T::get)
             {
                 //Vector
@@ -653,16 +654,38 @@ namespace math_parser
             else if (content.OperatorType == OperatorType_T::vec2)
                 return version->FindTypeIdFromName({ (char*)"vec2", 4 });
             else if (content.OperatorType == OperatorType_T::vec3)
+            {
+                int int_id = version->FindTypeIdFromName({ (char*)"int", 3 });
+                int float_id = version->FindTypeIdFromName({ (char*)"float", 5 });
+
+                int third_arg = OwnedNodes[2]->GetNodeDataTypeId(version);
+
+                for (auto& arg : std::vector<int>{ type_lhs, type_rhs, third_arg })
+                    if (arg != int_id && arg != float_id)
+                        return -1;
+
                 return version->FindTypeIdFromName({ (char*)"vec3", 4 });
+            }
             else if (content.OperatorType == OperatorType_T::vec4)
+            {
+                int int_id     = version->FindTypeIdFromName({ (char*)"int", 3 });
+                int float_id   = version->FindTypeIdFromName({ (char*)"float", 5 });
+
+                int third_arg  = OwnedNodes[2]->GetNodeDataTypeId(version);
+                int fourth_arg = OwnedNodes[3]->GetNodeDataTypeId(version);
+
+                for (auto& arg : std::vector<int>{ type_lhs, type_rhs, third_arg, fourth_arg })
+                    if (arg != int_id && arg != float_id)
+                        return -1;
+
                 return version->FindTypeIdFromName({ (char*)"vec4", 4 });
+            }   
             else
             {
                 if (type_lhs == -1 || type_rhs == -1)
                     return -1;
                 else
                     return version->GetOperationReturnType(type_lhs, type_rhs, content.OperatorType);
-                break;
             }
             break;
         }

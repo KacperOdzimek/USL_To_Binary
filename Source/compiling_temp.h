@@ -72,6 +72,8 @@ struct Compiling_Temp
 
 	//Variable Id, Data
 	std::map<int, Array> arrays;
+	//Extern name, Data
+	std::vector<std::pair<utils::TextPointer, Array>> extern_arrays;
 
 	int geometry_shader_input_primitive_id  = -1;
 	int geometry_shader_output_primitive_id = -1;

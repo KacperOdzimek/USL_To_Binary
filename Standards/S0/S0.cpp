@@ -244,7 +244,17 @@ VectorXVectorPrecomputationsBundle(vec4)
 				Temp->Variables.push_back({name, {Temp->layout_type_id, 1}});
 
 				for (auto& ext : Temp->ExternVariables)
+				{
 					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+
+					Compiling_Temp::Array* array_obj = nullptr;
+					for (auto& ea : Temp->extern_arrays)
+						if (ea.first == ext.first)
+							array_obj = &ea.second;
+
+					if (ext.second == V->FindTypeIdFromName({ (char*)"array", 5 }))
+						Temp->arrays.insert({ Temp->Variables.size() - 1, *array_obj });
+				}
 			});
 
 		V->AddSignature("PixelShader:", { Context_t::GlobalScope }, [V]()
@@ -262,7 +272,17 @@ VectorXVectorPrecomputationsBundle(vec4)
 				Temp->ShaderType = ShaderType_t::PixelShader;
 
 				for (auto& ext : Temp->ExternVariables)
+				{
 					Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+
+					Compiling_Temp::Array* array_obj = nullptr;
+					for (auto& ea : Temp->extern_arrays)
+						if (ea.first == ext.first)
+							array_obj = &ea.second;
+
+					if (ext.second == V->FindTypeIdFromName({ (char*)"array", 5 }))
+						Temp->arrays.insert({ Temp->Variables.size() - 1, *array_obj });
+				}
 
 				Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
 			});
@@ -316,7 +336,17 @@ VectorXVectorPrecomputationsBundle(vec4)
 					Temp->arrays.insert({ 0, {V->FindTypeIdFromName({ (char*)"vec4", 4 }), array_size} });
 
 					for (auto& ext : Temp->ExternVariables)
+					{
 						Temp->Variables.push_back({ ext.first, {ext.second, 1} });
+
+						Compiling_Temp::Array* array_obj = nullptr;
+						for (auto& ea : Temp->extern_arrays)
+							if (ea.first == ext.first)
+								array_obj = &ea.second;
+
+						if (ext.second == V->FindTypeIdFromName({ (char*)"array", 5 }))
+							Temp->arrays.insert({ Temp->Variables.size() - 1, *array_obj });
+					}
 				}
 			});
 
@@ -490,6 +520,29 @@ VectorXVectorPrecomputationsBundle(vec4)
 					Temp->SignatureWritedFunctionErrors.push_back("using extern cannot be used until vertex layout is specified");
 				else if (!Temp->IsExternValiding(Temp->NamesBuffor[0]))
 					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
+				else
+				{
+					std::string error = "Extern variable ";
+					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+						error += (*(Temp->NamesBuffor[0].begin + i));
+					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+				}
+			});
+
+		//Add uniforms array
+		V->AddSignature("using extern ?t ?n [ ?i ]", { Context_t::GlobalScope }, [V]()
+			{
+				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
+					Temp->SignatureWritedFunctionErrors.push_back("using extern cannot be used until vertex layout is specified");
+				else if (!Temp->IsExternValiding(Temp->NamesBuffor[0]))
+				{
+					auto ptr = &Temp->FieldsBuffor[1];
+					std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
+					int i; memcpy(&i, &(*as_bin.begin()), 4);
+
+					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], V->FindTypeIdFromName({ (char*)"array", 5 })});
+					Temp->extern_arrays.push_back({ Temp->NamesBuffor[0], {(int)Temp->FieldsBuffor[0], i} });
+				}
 				else
 				{
 					std::string error = "Extern variable ";
