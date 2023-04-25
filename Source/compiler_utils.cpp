@@ -113,8 +113,10 @@ namespace utils
 	bool IsFloat(utils::TextPointer& src)
 	{
 		if (src.length == 0) return 0;
+		int i = 0;
+		if (*src.begin == '-') ++i;
 		bool used_comma = 0;
-		for (int i = 0; i != src.length; i++)
+		for (;i != src.length; i++)
 			if (!(src.begin[i] >= '0' && src.begin[i] <= '9'))
 			{
 				if (src.begin[i] == '.')

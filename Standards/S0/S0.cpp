@@ -317,11 +317,6 @@ VectorXVectorPrecomputationsBundle(vec4)
 					Temp->ShaderType = ShaderType_t::GeometryShader;
 					Temp->RequestedReturnType = V->FindTypeIdFromName({ (char*)"vec4", 4 });
 
-
-					/* CREATE ARRAY OF VERTICES FROM VERTEX SHADER
-					* 				utils::TextPointer name((char*)"Vertex", 6);
-					Temp->Variables.push_back({ name, {Temp->layout_type_id, 1} });
-					*/
 					int array_size;
 					switch (Temp->geometry_shader_input_primitive_id)
 					{
