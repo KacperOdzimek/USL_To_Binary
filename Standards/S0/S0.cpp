@@ -9,6 +9,18 @@
 using namespace Standards;
 using namespace S0utils;
 
+void AddFunction(const char* name, const char* return_type, std::vector<const char*> args_types, Version* target)
+{
+	auto tp_name = utils::TextPointer::Get((char*)name);
+	auto tp_return_type = utils::TextPointer::Get((char*)return_type);
+	int return_id = target->FindTypeIdFromName(tp_return_type);
+	std::vector<int> args;
+	for (auto& arg : args_types)
+		args.push_back(target->FindTypeIdFromName(utils::TextPointer::Get((char*)arg)));
+
+	target->built_in_functions.push_back({tp_name, { return_id, args }});
+}
+
 namespace Standards
 {
 	Version* S0Create()
@@ -681,7 +693,18 @@ VectorXVectorPrecomputationsBundle(vec4)
 			Built-in-functions
 		*/
 
+		//Distance function
+		AddFunction("dst", "int",   { "int", "int" },   V);
+		AddFunction("dst", "float", {"float", "float"}, V);
+		AddFunction("dst", "vec2",  { "vec2", "vec2" },	V);
+		AddFunction("dst", "vec3",  { "vec3", "vec3" }, V);
+		AddFunction("dst", "vec4",  { "vec4", "vec4" },	V);
 
+		AddFunction("round", "int", { "float" }, V);
+		AddFunction("cell",  "int", { "float" }, V);
+		AddFunction("floor", "int", { "float" }, V);
+
+		AddFunction("sqrt", "float", { "float" }, V);
 
 		return V;
 	}

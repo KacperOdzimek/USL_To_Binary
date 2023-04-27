@@ -23,6 +23,8 @@ void CompilingTask::Start(void* source, int size)
 		Temp->CompilationConditions.insert({ condition, false });
 	}
 
+	Temp->FunctionsHeaders = CurrentVersion->built_in_functions;
+
 	std::vector<uint8_t> binary;
 
 	uint64_t signature_start = 0;
