@@ -373,8 +373,11 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
         }
         case math_parser::BinaryNode::Type::Function:
         {
-            bn.SetRest(current_node->content.FunctionId);
+            uint16_t id = current_node->content.FunctionId;
+            uint8_t array[2] = { id & 0xff, id >> 8 };
+            bn.SetRest(array[0]);
             Binary.push_back(bn);
+            Binary.push_back(array[1]);
             //Go Deeper
             if (current_node->OwnedNodes.size() != 0)
             {
