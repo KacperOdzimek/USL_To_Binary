@@ -1,4 +1,5 @@
 #include "compiling_temp.h"
+#include "USL_version.h"
 
 bool Compiling_Temp::IsVarValiding(utils::TextPointer& var)
 {
@@ -24,7 +25,7 @@ bool Compiling_Temp::IsStructValiding(utils::TextPointer& struc)
 	return 0;
 }
 
-int Compiling_Temp::GetFunctionId(utils::TextPointer& func, std::vector<int> args_types)
+int Compiling_Temp::GetFunctionId(utils::TextPointer& func, std::vector<int> args_types, Version* V)
 {
 	int error = -1;
 	for (int i = 0; i < FunctionsHeaders.size(); i++)
@@ -33,15 +34,22 @@ int Compiling_Temp::GetFunctionId(utils::TextPointer& func, std::vector<int> arg
 			if (args_types.size() < FunctionsHeaders[i].second.ArgumentsTypes.size()) error = -4;
 			else if (args_types.size() < FunctionsHeaders[i].second.ArgumentsTypes.size()) error = -3;
 			else
+			{
+				bool matchin_args_types = true;
 				for (int j = 0; j < args_types.size(); j++)
 				{
-					if (args_types[j] != FunctionsHeaders[i].second.ArgumentsTypes[j])
+					if (args_types[j] != FunctionsHeaders[i].second.ArgumentsTypes[j] &&
+						!V->IsAllowedConversion(args_types[j], FunctionsHeaders[i].second.ArgumentsTypes[j]))
 					{
-						error = -2;
+						matchin_args_types = false;
 						break;
 					}
 				}
-			return i;
+				if (matchin_args_types)
+					return i;
+				else
+					error = -2;
+			}
 		}
 	return error;
 }

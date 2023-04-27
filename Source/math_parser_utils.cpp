@@ -528,7 +528,7 @@ namespace math_parser
                             for (auto& arg : processed->OwnedNodes)
                                 a_types.push_back(arg->GetNodeDataTypeId(version));
 
-                            int func_id = Temp->GetFunctionId(n->Content, a_types);
+                            int func_id = Temp->GetFunctionId(n->Content, a_types, version);
 
                             if (func_id >= 0)
                             {
@@ -542,22 +542,22 @@ namespace math_parser
                                 goto Unrecognised_symbol; break;
                             case -2:
                             {
-                                std::string str = "type/s of arguments doesn't match any overload of function: ";
-                                str += n->Content.begin;
+                                std::string str = "type/s of arguments doesn't match any overload of the function: ";
+                                str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
                                 issues.push_back(str);
                                 break;
                             }
                             case -3:
                             {
-                                std::string str = "argument set too big for function of name: ";
-                                str += n->Content.begin;
+                                std::string str = "argument set too big for a function: ";
+                                str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
                                 issues.push_back(str);
                                 break;
                             }
                             case -4:
                             {
-                                std::string str = "argument set too little for function of name: ";
-                                str += n->Content.begin;
+                                std::string str = "argument set too little for a function: ";
+                                str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
                                 issues.push_back(str);
                                 break;
                             }

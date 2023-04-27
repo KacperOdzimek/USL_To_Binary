@@ -126,7 +126,7 @@ struct Compiling_Temp
 	bool IsStructValiding(utils::TextPointer& struc);
 	//-1 if not exists, -2 if exists but args types doesn't match
 	//-3 if args set is too big, -4 if too small
-	int GetFunctionId(utils::TextPointer& func, std::vector<int> args_types);
+	int GetFunctionId(utils::TextPointer& func, std::vector<int> args_types, Version* V);
 	std::pair<utils::TextPointer, std::pair<int, int>>* GetVar(utils::TextPointer& var);
 	int GetVarId(utils::TextPointer& var);
 };

@@ -263,6 +263,8 @@ public:
 	{
 		ShadersReturnTypes = _ShadersReturnTypes;
 	}
+
+	std::vector<std::pair<utils::TextPointer, FunctionHeader>> built_in_functions;
 };
 
 #undef Temp
