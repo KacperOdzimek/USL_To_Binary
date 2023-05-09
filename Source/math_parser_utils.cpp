@@ -529,7 +529,7 @@ namespace math_parser
                                 a_types.push_back(arg->GetNodeDataTypeId(version));
 
                             int func_id = Temp->GetFunctionId(n->Content, a_types, version);
-
+                            
                             if (func_id >= 0)
                             {
                                 processed->Type = NodeType::Function;
@@ -690,7 +690,7 @@ namespace math_parser
             break;
         }
         case math_parser::ExpressionTree::NodeType::Function:
-            return Temp->FunctionsHeaders.at(content.FunctionId).second.Return_Type;
+            return Temp->FunctionsHeaders.at(content.FunctionId).second.ReturnType;
             break;
         }
 
@@ -746,10 +746,30 @@ namespace math_parser
                 }
                 case '.':
                 {
-                    utils::TextPointer total = { exp.begin + start, i - start };
-                    if (!utils::IsInteger(total))
-                        if (!negative || (non_special_chars_occurred))
-                            goto end; break;
+                    int j = i + 1;
+                    bool function = false;
+                    while (j < bound)
+                    {
+                        switch (exp.begin[j])
+                        {
+                        case ' ': case '+': case '-': case '*': case '/': case '^': case ':': goto finish_is_function;
+                        case '(': function = true; goto finish_is_function; break;
+                        }
+                        j++;
+                    }
+                finish_is_function:
+                    if (function)
+                    {
+                        i++;
+                    }
+                    else
+                    {
+                        utils::TextPointer total = { exp.begin + start, i - start };
+                        if (!utils::IsInteger(total))
+                            if (!negative || (non_special_chars_occurred))
+                                goto end; break;
+                    }
+                    break;
                 }
                 case '\r': case '\n': case '\0':
                     goto end; break;

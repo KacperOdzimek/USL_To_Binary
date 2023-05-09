@@ -13,12 +13,17 @@ namespace utils
 */
 enum class Context_t
 {
-	GlobalScope, Shader, CustomFunction, StructDeclaration
+	GlobalScope, Shader, CustomFunction, StructDeclaration, Library
 };
 
 enum class ShaderType_t : uint8_t
 {
 	VertexShader, PixelShader, GeometryShader
+};
+
+enum class FileType
+{
+	Shader = 0, Library = 1, Metashader = 2
 };
 
 struct Struct
@@ -31,10 +36,10 @@ struct Struct
 
 struct FunctionHeader
 {
-	int Return_Type;
+	int ReturnType;
 	std::vector<int> ArgumentsTypes;
 	FunctionHeader(int _Return_Type, std::vector<int> _ArgumentsTypes) :
-		Return_Type(_Return_Type), ArgumentsTypes(_ArgumentsTypes) {};
+		ReturnType(_Return_Type), ArgumentsTypes(_ArgumentsTypes) {};
 };
 
 /*
@@ -43,6 +48,7 @@ struct FunctionHeader
 */
 struct Compiling_Temp
 {
+	bool writed_anything = false;
 	/*
 		Store argument fields identyficators
 		If we found, that signature is matching
@@ -109,12 +115,25 @@ struct Compiling_Temp
 	std::vector<std::string> SignatureWritedFunctionErrors;
 	Context_t Context = Context_t::GlobalScope;
 	ShaderType_t ShaderType = ShaderType_t::VertexShader;
+	FileType FileType = FileType::Shader;
 	/*
 		See Version::compilation_conditions
 		key is condition name
 		value is whatever condition were met
 	*/
 	std::map<std::string, bool> CompilationConditions;
+
+	std::vector<std::unique_ptr<std::string>> ImportedFunctionsNames;
+	/*
+		When library is compiled, we need to know positions of functions declarations
+		to generate file header
+	*/
+	std::vector<int> functions_declarations_positions;
+	/*
+		True triggers passing binary size to functions_declarations_positions
+		When done it automaticaly turns to false
+	*/
+	bool pass_last_binary_index_to_functions_declarations_positions = false;
 
 	int RequestedReturnType = -1;
 

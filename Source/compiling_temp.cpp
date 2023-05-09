@@ -31,21 +31,21 @@ int Compiling_Temp::GetFunctionId(utils::TextPointer& func, std::vector<int> arg
 	for (int i = 0; i < FunctionsHeaders.size(); i++)
 		if (FunctionsHeaders[i].first == func)
 		{
-			if (args_types.size() < FunctionsHeaders[i].second.ArgumentsTypes.size()) error = -4;
-			else if (args_types.size() < FunctionsHeaders[i].second.ArgumentsTypes.size()) error = -3;
+			if (args_types.size() < FunctionsHeaders[i].second.ArgumentsTypes.size() && error == -1) error = -4;
+			else if (args_types.size() < FunctionsHeaders[i].second.ArgumentsTypes.size() && error == -1) error = -3;
 			else
 			{
-				bool matchin_args_types = true;
+				bool matching_args_types = true;
 				for (int j = 0; j < args_types.size(); j++)
 				{
 					if (args_types[j] != FunctionsHeaders[i].second.ArgumentsTypes[j] &&
 						!V->IsAllowedConversion(args_types[j], FunctionsHeaders[i].second.ArgumentsTypes[j]))
 					{
-						matchin_args_types = false;
+						matching_args_types = false;
 						break;
 					}
 				}
-				if (matchin_args_types)
+				if (matching_args_types)
 					return i;
 				else
 					error = -2;

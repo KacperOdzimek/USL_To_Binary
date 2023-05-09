@@ -15,7 +15,9 @@ void CompilingTask::Start(void* source, int size)
 
 	std::vector<std::string> prompt;
 
-	Version* CurrentVersion = CreateVersion(0);
+	int language_standard = 0;
+
+	Version* CurrentVersion = CreateVersion(language_standard);
 
 	//Create compilation conditions
 	for (auto& condition : CurrentVersion->GetConditionsNames())
@@ -60,10 +62,16 @@ void CompilingTask::Start(void* source, int size)
 					binary.push_back(v);
 				Temp->pass_to_binary_buffor.clear();
 
+				if (Temp->pass_last_binary_index_to_functions_declarations_positions)
+				{
+					Temp->functions_declarations_positions.push_back(binary.size() - 1);
+					Temp->pass_last_binary_index_to_functions_declarations_positions = false;
+				}
+
 				if (Temp->SignatureWritedFunctionErrors.size())
 					for (auto issue : Temp->SignatureWritedFunctionErrors)
 						prompt.push_back(std::string("Error at line ") + std::to_string(line) + ": " + issue + ".");
-
+				Temp->writed_anything = true;
 				return;
 			}
 			else
@@ -74,13 +82,14 @@ void CompilingTask::Start(void* source, int size)
 
 				if (result.matching_but_wrong.size() == 0)
 					prompt.push_back(std::string("Error at line ") + std::to_string(line) + ": " + "Incorrect line.");
-
+				Temp->writed_anything = true;
 				return;
 			}
 		}
 		else
 		{
 			signature_start = signature_end;
+
 		}
 	};
 
@@ -158,7 +167,11 @@ void CompilingTask::Start(void* source, int size)
 			else if ((unsigned int)local_deepness < Temp->Deepness)
 			{
 				if (local_deepness == 0)
-					Temp->Context = Context_t::GlobalScope;
+					switch (Temp->FileType)
+					{
+					case FileType::Library: Temp->Context = Context_t::Library; break;
+					default: Temp->Context = Context_t::GlobalScope; break;
+					}			
 
 				//Remove variables from leaved scope
 				{
@@ -198,6 +211,23 @@ void CompilingTask::Start(void* source, int size)
 			prompt.push_back(std::string("Error: ") + CurrentVersion->GetConditionErrorText(condition.first));
 		}
 	}
+	
+	if (Temp->FileType == FileType::Library)
+	{
+		for (int i = Temp->functions_declarations_positions.size() - 1; i != -1; i--)
+		{
+			auto x = (uint16_t)Temp->functions_declarations_positions.at(i);
+			binary.insert(binary.begin(), *(((uint8_t*)&x) + 1));
+			binary.insert(binary.begin(), *(((uint8_t*)&x)));
+		}
+			
+		auto x = ((uint16_t)Temp->functions_declarations_positions.size());
+		binary.insert(binary.begin(), *(((uint8_t*)&x) + 1));
+		binary.insert(binary.begin(), *(((uint8_t*)&x)));
+	}
+
+	binary.insert(binary.begin(), (uint8_t)Temp->FileType);
+	binary.insert(binary.begin(), (uint8_t)language_standard);
 
 	result.success = !prompt.size();
 	result.prompt = prompt;

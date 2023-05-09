@@ -122,6 +122,24 @@ namespace Standards
 		V->AddType("array", [](utils::TextPointer& src)	   {return false; }, 
 							[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{};});
 
+		V->AddType("buffer", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("texture_1d", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("texture_2d", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("texture_3d", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("texture_cube", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("texture_2d_ms", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
 		/*
 			Types Conversions
 		*/
@@ -237,6 +255,29 @@ VectorXVectorPrecomputationsBundle(vec4)
 		/*
 			Signatures
 		*/
+
+		V->AddSignature("define ?n:", { Context_t::GlobalScope }, [V]()
+			{
+				if (Temp->writed_anything)
+					Temp->SignatureWritedFunctionErrors.push_back("Define must be the first line of the code");
+				if (Temp->NamesBuffor[0] == utils::TextPointer{(char*)"shader", 6})
+				{
+					Temp->FileType = FileType::Shader;
+				}
+				else if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"library", 7 })
+				{
+					Temp->FileType = FileType::Library;
+					Temp->Context = Context_t::Library;
+					Temp->CompilationConditions.at("VertexLayoutSpecified") = true;
+					Temp->CompilationConditions.at("ContainsVertexShader") = true;
+					Temp->CompilationConditions.at("ContainsPixelShader") = true; 
+					Temp->CompilationConditions.at("PixelReturn") = true;
+				}
+				else
+				{
+					Temp->SignatureWritedFunctionErrors.push_back("Invalid option");
+				}
+			});
 
 		V->AddSignature("VertexShader:", { Context_t::GlobalScope }, [V]() 
 			{
@@ -485,7 +526,7 @@ VectorXVectorPrecomputationsBundle(vec4)
 			});
 
 		//Function declaration
-		V->AddSignature("?t ?n ?f", { Context_t::GlobalScope }, []()
+		V->AddSignature("?t ?n ?f", { Context_t::GlobalScope, Context_t::Library }, []()
 			{
 				Temp->Context = Context_t::CustomFunction;
 				Temp->Deepness += 1;
@@ -502,6 +543,40 @@ VectorXVectorPrecomputationsBundle(vec4)
 				{
 					Temp->Variables.push_back({ Temp->NamesBuffor[i - 1], {Temp->FieldsBuffor[i], Temp->Deepness} });
 					Args_Types.push_back(Temp->FieldsBuffor[i]);
+				}
+
+				if (Temp->FileType == FileType::Library)
+				{
+					Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
+					Temp->pass_to_binary_buffor.insert(
+						Temp->pass_to_binary_buffor.end(),
+						Temp->NamesBuffor.front().begin, 
+						Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
+					);
+					Temp->pass_last_binary_index_to_functions_declarations_positions = true;
+				}
+
+				for (auto& func : Temp->FunctionsHeaders)
+				{
+					if (func.first == Temp->NamesBuffor.front() && Args_Types.size() == func.second.ArgumentsTypes.size())
+					{
+						bool all_equal = true;
+						for (int i = 0; i < Args_Types.size(); i++)
+						{
+							if (Args_Types.at(i) != func.second.ArgumentsTypes.at(i))
+							{
+								all_equal = false;
+								break;
+							}
+						}
+						if (all_equal)
+						{
+							if (func.second.ReturnType != Temp->FieldsBuffor[0])
+								Temp->SignatureWritedFunctionErrors.push_back("Function cannot be overloaded only by the returned type");
+							else
+								Temp->SignatureWritedFunctionErrors.push_back("Function with identical interface already exsist");
+						}
+					}
 				}
 
 				//Give compiler an information about function's args types and return type
@@ -556,6 +631,78 @@ VectorXVectorPrecomputationsBundle(vec4)
 					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
 						error += (*(Temp->NamesBuffor[0].begin + i));
 					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+				}
+			});
+
+		//Load texture
+		V->AddSignature("using ?t ?n", { Context_t::GlobalScope }, [V]()
+			{
+				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
+					Temp->SignatureWritedFunctionErrors.push_back("using texture cannot be used until vertex layout is specified");
+				else if (!Temp->IsExternValiding(Temp->NamesBuffor[0]))
+				{
+					if (Temp->FieldsBuffor[0] < V->FindTypeIdFromName({ (char*)"Buffor", 6 }))
+						Temp->SignatureWritedFunctionErrors.push_back("invalid texture type");
+					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
+				}
+				else
+				{
+					std::string error = "Extern variable ";
+					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+						error += (*(Temp->NamesBuffor[0].begin + i));
+					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+				}
+			});
+
+		//Load library
+		V->AddSignature("using library ?n", { Context_t::GlobalScope }, [V]()
+			{
+				std::string lib_name;
+				lib_name.insert(lib_name.begin(), Temp->NamesBuffor[0].begin, Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length);
+				auto library_content = USL_Translator::USL_To_Binary::LEFC(0, lib_name);
+				if (library_content.position == nullptr || library_content.size == 0)
+					Temp->SignatureWritedFunctionErrors.push_back("Failed to load library " + lib_name);
+				else
+				{
+					uint8_t* iterator = (uint8_t*)(library_content.position) + 2;
+					uint16_t functions_count;
+					uint8_t f_count_parts[2] = { *iterator, *(iterator + 1) };
+					memcpy(&functions_count, &f_count_parts[0], 2);
+					std::vector<uint16_t> positions;
+					for (int i = 0; i < functions_count; i++)
+					{
+						iterator += 2;
+						uint16_t pos;
+						uint8_t f_pos_parts[2] = { *iterator, *(iterator + 1) };
+						memcpy(&pos, &f_pos_parts[0], 2);
+						positions.push_back(pos);
+					}						
+					for (auto& pos : positions)
+					{
+						iterator = (uint8_t*)(library_content.position) + pos;
+						int return_type_id = *(++iterator);
+						int args_count = *(++iterator);
+						std::vector<int> args;
+						for (int i = 0; i < args_count; i++)
+							args.push_back(*(++iterator));
+
+						int name_size = *(++iterator);
+
+						auto FunctionName = std::make_unique<std::string>(lib_name + '.');
+						++iterator;
+
+						FunctionName->insert(FunctionName->end(), (char*)(iterator), (char*)(iterator) + name_size);
+
+						Temp->ImportedFunctionsNames.push_back(std::move(FunctionName));
+
+						int ptr_size = lib_name.size() + 1 + name_size;
+						utils::TextPointer FunctionNamePtr{ &(Temp->ImportedFunctionsNames.back()->at(0)), ptr_size };
+
+						Temp->FunctionsHeaders.push_back({ FunctionNamePtr, {return_type_id, args} });
+					}
+
+					Temp->pass_to_binary_buffor.push_back(lib_name.size());
+					Temp->pass_to_binary_buffor.insert(Temp->pass_to_binary_buffor.end(), lib_name.begin(), lib_name.end());
 				}
 			});
 
@@ -705,6 +852,13 @@ VectorXVectorPrecomputationsBundle(vec4)
 		AddFunction("floor", "int", { "float" }, V);
 
 		AddFunction("sqrt", "float", { "float" }, V);
+
+		AddFunction("sample", "vec4", { "texture_1d", "float" }, V);
+		AddFunction("sample", "vec4", { "texture_2d", "vec2" },  V);
+		AddFunction("sample", "vec4", { "texture_3d", "vec3" },  V);
+
+		AddFunction("sample", "vec4", { "texture_cube",  "vec3" },		 V);
+		AddFunction("sample", "vec4", { "texture_2d_ms", "vec3", "int"}, V);
 
 		return V;
 	}
