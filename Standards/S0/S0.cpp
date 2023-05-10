@@ -761,7 +761,7 @@ VectorXVectorPrecomputationsBundle(vec4)
 			});
 
 		//Declare geometry shader input primitive
-		V->AddSignature("using geometry input primitive ?n ?n", { Context_t::GlobalScope }, [V]()
+		V->AddSignature("using input primitive ?n ?n", { Context_t::GlobalScope }, [V]()
 			{
 				if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"point", 5 })
 					Temp->geometry_shader_input_primitive_id = 0;
@@ -781,7 +781,7 @@ VectorXVectorPrecomputationsBundle(vec4)
 			});
 
 		//Declare geometry shader output primitive
-		V->AddSignature("using geometry output primitive ?n ?n", { Context_t::GlobalScope }, [V]()
+		V->AddSignature("using output primitive ?n ?n", { Context_t::GlobalScope }, [V]()
 			{
 				if (Temp->NamesBuffor[0] == utils::TextPointer{ (char*)"point", 5 })
 					Temp->geometry_shader_output_primitive_id = 0;
