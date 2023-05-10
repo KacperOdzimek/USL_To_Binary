@@ -48,6 +48,9 @@ struct FunctionHeader
 */
 struct Compiling_Temp
 {
+	std::map<std::string, USL_Translator::TranslationResult::HeaderEntry>& data_for_header;
+	Compiling_Temp(std::map<std::string, USL_Translator::TranslationResult::HeaderEntry>& _data_for_header) : data_for_header(_data_for_header) {};
+
 	bool writed_anything = false;
 	/*
 		Store argument fields identyficators

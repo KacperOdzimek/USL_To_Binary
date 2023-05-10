@@ -9,7 +9,7 @@
 
 void CompilingTask::Start(void* source, int size)
 {
-	Temp = new Compiling_Temp;
+	Temp = new Compiling_Temp(result.data_for_header);
 
 	char* begin = (char*)source;
 

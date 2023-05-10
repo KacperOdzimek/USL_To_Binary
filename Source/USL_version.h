@@ -71,6 +71,18 @@ public:
 				return i;
 		return -1;
 	}
+	utils::TextPointer FindTypeNameFromId(int id)
+	{
+		if (id < Types.size())
+		{
+			auto* ptr = Types.at(id)->name;
+			int size = 0;
+			while (*(ptr + size) != '\0') ++size;
+			return { (char*)ptr, size };
+		}
+		else
+			return Temp->Structs.at(id - Types.size()).first;
+	}
 	
 private:
 	struct Signature

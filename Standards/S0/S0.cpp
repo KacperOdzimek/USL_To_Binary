@@ -1,6 +1,7 @@
 #include "S0.h"
 #include "utils.h"
 #include "../../Source/compiling_task.h"
+#include "../../Source/commons.h"
 
 #include <string>
 
@@ -8,6 +9,8 @@
 
 using namespace Standards;
 using namespace S0utils;
+
+using HeaderEntryType = USL_Translator::TranslationResult::HeaderEntry::Type;
 
 void AddFunction(const char* name, const char* return_type, std::vector<const char*> args_types, Version* target)
 {
@@ -592,6 +595,12 @@ VectorXVectorPrecomputationsBundle(vec4)
 				{
 					Temp->CompilationConditions.at("VertexLayoutSpecified") = true;
 					Temp->layout_type_id = Temp->FieldsBuffor.at(0);
+
+					auto type_name = V->FindTypeNameFromId(Temp->FieldsBuffor[0]);
+					std::string name_str;
+					name_str.insert(name_str.end(), type_name.begin, type_name.begin + type_name.length);
+
+					Temp->data_for_header.insert({ "vertex layout", {HeaderEntryType::Value, {name_str}}});
 				}
 			});
 
@@ -601,7 +610,18 @@ VectorXVectorPrecomputationsBundle(vec4)
 				if (!Temp->CompilationConditions.at("VertexLayoutSpecified"))
 					Temp->SignatureWritedFunctionErrors.push_back("using extern cannot be used until vertex layout is specified");
 				else if (!Temp->IsExternValiding(Temp->NamesBuffor[0]))
+				{
+					std::string name_str;
+					name_str.insert(name_str.end(), Temp->NamesBuffor[0].begin, 
+						Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length);
+
+					if (Temp->data_for_header.find("extern") == Temp->data_for_header.end())
+						Temp->data_for_header.insert({ "extern", {HeaderEntryType::Array, {name_str}} });
+					else
+						Temp->data_for_header.at("extern").content.push_back(name_str);
+
 					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
+				}
 				else
 				{
 					std::string error = "Extern variable ";
@@ -621,6 +641,20 @@ VectorXVectorPrecomputationsBundle(vec4)
 					auto ptr = &Temp->FieldsBuffor[1];
 					std::vector<uint8_t> as_bin = { *(ptr + 3), *(ptr + 2), *(ptr + 1), *(ptr + 0) };
 					int i; memcpy(&i, &(*as_bin.begin()), 4);
+
+					std::string name_str;
+					name_str.insert(name_str.end(), Temp->NamesBuffor[0].begin,
+						Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length);
+
+					if (Temp->data_for_header.find("array") == Temp->data_for_header.end())
+						Temp->data_for_header.insert({ "array", {HeaderEntryType::Object, {name_str, std::to_string(i)}} });
+					else
+					{
+						Temp->data_for_header.at("array").content.push_back(name_str);
+						Temp->data_for_header.at("array").content.push_back(std::to_string(i));
+					}
+
+					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
 
 					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], V->FindTypeIdFromName({ (char*)"array", 5 })});
 					Temp->extern_arrays.push_back({ Temp->NamesBuffor[0], {(int)Temp->FieldsBuffor[0], i} });
@@ -644,6 +678,15 @@ VectorXVectorPrecomputationsBundle(vec4)
 					if (Temp->FieldsBuffor[0] < V->FindTypeIdFromName({ (char*)"Buffor", 6 }))
 						Temp->SignatureWritedFunctionErrors.push_back("invalid texture type");
 					Temp->ExternVariables.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
+
+					std::string name_str;
+					name_str.insert(name_str.end(), Temp->NamesBuffor[0].begin,
+						Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length);
+
+					if (Temp->data_for_header.find("texture") == Temp->data_for_header.end())
+						Temp->data_for_header.insert({ "texture", {HeaderEntryType::Array, {name_str}} });
+					else
+						Temp->data_for_header.at("texture").content.push_back(name_str);
 				}
 				else
 				{
@@ -729,6 +772,12 @@ VectorXVectorPrecomputationsBundle(vec4)
 				else
 					Temp->SignatureWritedFunctionErrors.push_back("No such primitive");
 				Temp->pass_to_binary_buffor.push_back((uint8_t)Temp->geometry_shader_input_primitive_id);
+
+				std::string name_str;
+				name_str.insert(name_str.end(), Temp->NamesBuffor[0].begin,
+					Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length);
+
+				Temp->data_for_header.insert({ "primitive", {HeaderEntryType::Value, {name_str}} });
 			});
 
 		//Declare geometry shader output primitive
