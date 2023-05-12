@@ -125,6 +125,7 @@ namespace Standards
 		V->AddType("array", [](utils::TextPointer& src)	   {return false; }, 
 							[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{};});
 
+
 		V->AddType("buffer", [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
@@ -141,6 +142,34 @@ namespace Standards
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
 		V->AddType("texture_2d_ms", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+
+		V->AddType("mat2x2", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat2x3", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat2x4", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat3x2", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat3x3", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat3x4", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat4x2", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat4x3", [](utils::TextPointer& src) {return false; },
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
+
+		V->AddType("mat4x4", [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
 		/*
@@ -174,7 +203,7 @@ namespace Standards
 								std::to_string(std::pow(a, b))}				\
 
 #define ScalarPrecomputation(type_a, type_b, type_return, operato, operator_char)														\
-		V->AllowPrecomputation(#type_a, #type_b, #type_return, OperatorType_T::operato,													\
+		V->AllowPrecomputation(#type_a, #type_b, #type_return, OperatorType_T::operato, true,											\
 			[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {																	\
 			return ModNumbers(TextToFloat(a_src), TextToFloat(b_src), operator_char);													\
 			});																															\
@@ -184,18 +213,18 @@ namespace Standards
 		ScalarPrecomputation(type_a, type_b, type_return, sub, -)																		\
 		ScalarPrecomputation(type_a, type_b, type_return, mul, *)																		\
 		ScalarPrecomputation(type_a, type_b, type_return, div, /)																		\
-		V->AllowPrecomputation(#type_a, #type_b, #type_return, OperatorType_T::pow,														\
+		V->AllowPrecomputation(#type_a, #type_b, #type_return, OperatorType_T::pow,	true,												\
 		[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {																		\
 		return Power(TextToFloat(a_src), TextToFloat(b_src));																			\
 			});																															\
 
 		ScalarPrecomputationBundle(int, int, int)
-		ScalarPrecomputationBundle(float, float, float)
-		ScalarPrecomputationBundle(int, float, float)
+			ScalarPrecomputationBundle(float, float, float)
+			ScalarPrecomputationBundle(int, float, float)
 
 
 #define VectorPrecomputation(vec_type, sec_type, operato)																					\
-		V->AllowPrecomputation(#vec_type, #sec_type, #vec_type, OperatorType_T::operato,													\
+		V->AllowPrecomputation(#vec_type, #sec_type, #vec_type, OperatorType_T::operato, true,												\
 			[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {																		\
 			return std::pair<int, std::string>{V->FindTypeIdFromName({ (char*)#vec_type, 4 }),												\
 				VectorXScalarOperation(a_src, b_src, OperatorType_T::operato, V)};															\
@@ -208,17 +237,17 @@ namespace Standards
 		VectorPrecomputation(vec_type, sec_type, div)			\
 		VectorPrecomputation(vec_type, sec_type, pow)			\
 
-		VectorPrecomputationsBundle(vec2, int)
-		VectorPrecomputationsBundle(vec2, float)
+			VectorPrecomputationsBundle(vec2, int)
+			VectorPrecomputationsBundle(vec2, float)
 
-		VectorPrecomputationsBundle(vec3, int)
-		VectorPrecomputationsBundle(vec3, float)
+			VectorPrecomputationsBundle(vec3, int)
+			VectorPrecomputationsBundle(vec3, float)
 
-		VectorPrecomputationsBundle(vec4, int)
-		VectorPrecomputationsBundle(vec4, float)
+			VectorPrecomputationsBundle(vec4, int)
+			VectorPrecomputationsBundle(vec4, float)
 
 #define VectorXVectorPrecomputation(vec_type, operato)											\
-		V->AllowPrecomputation(#vec_type, #vec_type, #vec_type, OperatorType_T::operato,		\
+		V->AllowPrecomputation(#vec_type, #vec_type, #vec_type, OperatorType_T::operato, true,	\
 			[V](utils::TextPointer& a_src, utils::TextPointer& b_src) {							\
 			return std::pair<int, std::string>{V->FindTypeIdFromName({ (char*)#vec_type, 4 }),  \
 			VectorXVectorOperation(a_src, b_src, OperatorType_T::operato, V)};					\
@@ -231,9 +260,45 @@ namespace Standards
 		VectorXVectorPrecomputation(vec_name, div)		\
 		VectorXVectorPrecomputation(vec_name, pow)		\
 
-VectorXVectorPrecomputationsBundle(vec2)
-VectorXVectorPrecomputationsBundle(vec3)
-VectorXVectorPrecomputationsBundle(vec4)
+			VectorXVectorPrecomputationsBundle(vec2)
+			VectorXVectorPrecomputationsBundle(vec3)
+			VectorXVectorPrecomputationsBundle(vec4)
+
+			V->AllowOperation("mat2x2", "mat2x2", "mat2x2", OperatorType_T::add, true);
+			V->AllowOperation("mat3x3", "mat3x3", "mat3x3", OperatorType_T::add, true);
+			V->AllowOperation("mat4x4", "mat4x4", "mat4x4", OperatorType_T::add, true);
+
+			V->AllowOperation("mat2x2", "mat2x2", "mat2x2", OperatorType_T::sub, true);
+			V->AllowOperation("mat3x3", "mat3x3", "mat3x3", OperatorType_T::sub, true);
+			V->AllowOperation("mat4x4", "mat4x4", "mat4x4", OperatorType_T::sub, true);
+
+			for (auto& m1 : { "mat2x2", "mat2x3", "mat2x4" , "mat3x2" , "mat3x3" , "mat3x4", "mat4x2" , "mat4x3" , "mat4x4" })
+			{
+				V->AllowOperation(m1, "int",   m1, OperatorType_T::mul, true);
+				V->AllowOperation(m1, "float", m1, OperatorType_T::mul, true);
+				for (auto& m2 : { "mat2x2", "mat2x3", "mat2x4" , "mat3x2" , "mat3x3" , "mat3x4", "mat4x2" , "mat4x3" , "mat4x4" })
+				{
+					if (int(m1[3] - '0') == int(m2[5] - '0'))
+					{
+						int columns = int(m1[3] - '0') > int(m2[3] - '0') ? int(m1[3] - '0') : int(m2[3] - '0');
+						int rows = int(m1[5] - '0') > int(m2[5] - '0') ? int(m1[5] - '0') : int(m2[5] - '0');
+						std::string name = "mat" + std::to_string(columns) + 'x' + std::to_string(rows);
+						V->AllowOperation(m1, m2, name.c_str(), OperatorType_T::mul, false);
+					}
+				}
+			}
+
+			V->AllowOperation("mat2x2", "vec2", "vec2", OperatorType_T::mul, true);
+			V->AllowOperation("mat2x3", "vec2", "vec2", OperatorType_T::mul, true);
+			V->AllowOperation("mat2x4", "vec2", "vec2", OperatorType_T::mul, true);
+
+			V->AllowOperation("mat3x2", "vec3", "vec3", OperatorType_T::mul, true);
+			V->AllowOperation("mat3x3", "vec3", "vec3", OperatorType_T::mul, true);
+			V->AllowOperation("mat3x4", "vec3", "vec3", OperatorType_T::mul, true);
+
+			V->AllowOperation("mat4x2", "vec4", "vec4", OperatorType_T::mul, true);
+			V->AllowOperation("mat4x3", "vec4", "vec4", OperatorType_T::mul, true);
+			V->AllowOperation("mat4x4", "vec4", "vec4", OperatorType_T::mul, true);
 
 #undef VectorXVectorPrecomputationsBundle
 #undef VectorXVectorPrecomputation
@@ -600,7 +665,7 @@ VectorXVectorPrecomputationsBundle(vec4)
 					std::string name_str;
 					name_str.insert(name_str.end(), type_name.begin, type_name.begin + type_name.length);
 
-					Temp->data_for_header.insert({ "vertex layout", {HeaderEntryType::Value, {name_str}}});
+					Temp->data_for_header.insert({ "vertex_layout", {HeaderEntryType::Value, {name_str}}});
 				}
 			});
 

@@ -123,12 +123,23 @@ int Version::GetOperationReturnType(int Type1, int Type2, OperatorType_T op)
         if (
             (
                 (operation.Type1 == Type1 && operation.Type2 == Type2) ||
-                (operation.Type1 == Type2 && operation.Type2 == Type1)
+                (operation.Type1 == Type2 && operation.Type2 == Type1 && operation.commutative_types)
                 )
             &&
             op == operation.operato)
 
             return operation.ReturnType;
+    }
+    for (auto& operation : allowed_operations)
+    {
+        if (
+            (
+                (operation.type_1 == Type1 && operation.type_2 == Type2) ||
+                (operation.type_2 == Type1 && operation.type_1 == Type2 && operation.commutative_types)
+                )
+            &&
+            op == operation.operato)
+            return operation.return_type;
     }
     return -1;
 }

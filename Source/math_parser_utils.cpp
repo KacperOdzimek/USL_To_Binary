@@ -245,16 +245,17 @@ namespace math_parser
         auto is_array_get = [](utils::TextPointer tp) -> bool
         {
             int deep = 0;
+            int square_bracket_open_count = 0;
             for (int i = 0; i < tp.length; i++)
             {
                 switch (tp.begin[i])
                 {
                 case '(': ++deep; break;
                 case ')': --deep; break;
-                case '[': if (deep == 0) return 1;
+                case '[': if (deep == 0) ++square_bracket_open_count;
                 }
             }
-            return 0;
+            return square_bracket_open_count;
         };
 
         auto GenSubexpForArg = [this, V, &issues](utils::TextPointer start) -> int
@@ -385,31 +386,50 @@ namespace math_parser
             {
                 int deep = 0;
                 int i = 0;
-                int open = 0;
-                while (true)
+                std::vector<int> open_pos;
+                std::vector<int> close_pos;
+                while (i < node->Content.length)
                 {
                     switch (node->Content.begin[i])
                     {
                     case '(': ++deep; break;
                     case ')': --deep; break;
-                    case '[': if (deep == 0) open = i; break;
-                    case ']': if (deep == 0) goto lhs_arr_get_end;
+                    case '[': if (deep == 0) { open_pos.push_back(i); } break;
+                    case ']': if (deep == 0) { close_pos.push_back(i); }
                     }
                     i++;
                 }
-            lhs_arr_get_end:
-                auto lhs = new RawExpressionTree({ node->Content.begin, open }, V, issues);
+
+                auto lhs = new RawExpressionTree({ node->Content.begin, open_pos.at(0) }, V, issues);
                 subtrees.push_back(lhs);
 
-                auto rhs = new RawExpressionTree({ node->Content.begin + open + 1, i - open - 1 }, V, issues);
-                subtrees.push_back(rhs);
+                if (open_pos.size() != 2)
+                {
+                    auto rhs = new RawExpressionTree({ node->Content.begin + open_pos.at(0) + 1, i - close_pos.at(0) }, V, issues);
+                    subtrees.push_back(rhs);
 
-                node->Own(lhs->Uppest());
-                node->Own(rhs->Uppest());
+                    node->Own(lhs->Uppest());
+                    node->Own(rhs->Uppest());
                 
-                chars_buff.push_back('[');
-                node->Content.begin = &chars_buff.back();
-                node->Content.length = 1;
+                    chars_buff.push_back('[');
+                    node->Content.begin = &chars_buff.back();
+                    node->Content.length = 1;
+                }
+                else
+                {
+                    auto first_id = new RawExpressionTree({ node->Content.begin + open_pos.at(0) + 1, 
+                        close_pos.at(0) - open_pos.at(0) - 1 }, V, issues);
+                    auto second_id = new RawExpressionTree({ node->Content.begin + open_pos.at(1) + 1, 
+                        close_pos.at(1) - open_pos.at(1) - 1 }, V, issues);
+
+                    node->Own(lhs->Uppest());
+                    node->Own(first_id->Uppest());
+                    node->Own(second_id->Uppest());
+
+                    chars_buff.push_back(']');
+                    node->Content.begin = &chars_buff.back();
+                    node->Content.length = 1;
+                }
             }
         }
     }
@@ -475,18 +495,19 @@ namespace math_parser
 				{
 					switch (n->Content.begin[0])
 					{
-						case '+': processed->content.OperatorType = OperatorType_T::add;       break;
-						case '-': processed->content.OperatorType = OperatorType_T::sub;       break;
-						case '*': processed->content.OperatorType = OperatorType_T::mul;       break;
-						case '/': processed->content.OperatorType = OperatorType_T::div;       break;
-						case '^': processed->content.OperatorType = OperatorType_T::pow;       break;
+						case '+': processed->content.OperatorType = OperatorType_T::add;        break;
+						case '-': processed->content.OperatorType = OperatorType_T::sub;        break;
+						case '*': processed->content.OperatorType = OperatorType_T::mul;        break;
+						case '/': processed->content.OperatorType = OperatorType_T::div;        break;
+						case '^': processed->content.OperatorType = OperatorType_T::pow;        break;
 
-                        case '.': processed->content.OperatorType = OperatorType_T::get;       break;
-                        case '[': processed->content.OperatorType = OperatorType_T::array_get; break;
+                        case '.': processed->content.OperatorType = OperatorType_T::get;        break;
+                        case '[': processed->content.OperatorType = OperatorType_T::array_get;  break;
+                        case ']': processed->content.OperatorType = OperatorType_T::matrix_get; break;
 
-                        case '\2': processed->content.OperatorType = OperatorType_T::vec2;     break;
-                        case '\3': processed->content.OperatorType = OperatorType_T::vec3;     break;
-                        case '\4': processed->content.OperatorType = OperatorType_T::vec4;     break;
+                        case '\2': processed->content.OperatorType = OperatorType_T::vec2;      break;
+                        case '\3': processed->content.OperatorType = OperatorType_T::vec3;      break;
+                        case '\4': processed->content.OperatorType = OperatorType_T::vec4;      break;
 
 						default: goto other_cases;
 					}
@@ -647,9 +668,28 @@ namespace math_parser
             //Get from array
             else if (content.OperatorType == OperatorType_T::array_get)
             {
-                if (Temp->arrays.find(OwnedNodes[0]->content.Variable) != Temp->arrays.end())
+                if (type_lhs >= version->FindTypeIdFromName({ (char*)"mat2x2", 6 }) &&
+                    type_lhs <= version->FindTypeIdFromName({ (char*)"mat4x4", 6 }))
+                {
+                    std::string vec_name = "vec";
+                    auto name = version->FindTypeNameFromId(type_lhs);
+                    vec_name += *(name.begin + 3);
+                    return version->FindTypeIdFromName({(char*)vec_name.c_str(), 4});
+                }
+            gt_then_it_is_array:
+                if (OwnedNodes[0]->Type == NodeType::Variable && Temp->arrays.find(OwnedNodes[0]->content.Variable) != Temp->arrays.end())
                     return Temp->arrays.at(OwnedNodes[0]->content.Variable).type;
                 return -1;
+            }
+            else if (content.OperatorType == OperatorType_T::matrix_get)
+            {
+                //Not an matrix
+                if (!(type_lhs >= version->FindTypeIdFromName({ (char*)"mat2x2", 6 }) &&
+                    type_lhs <= version->FindTypeIdFromName({ (char*)"mat4x4", 6 })))
+                {
+                    goto gt_then_it_is_array;
+                }
+                return version->FindTypeIdFromName({ (char*)"float", 5 });
             }
             else if (content.OperatorType == OperatorType_T::vec2)
                 return version->FindTypeIdFromName({ (char*)"vec2", 4 });

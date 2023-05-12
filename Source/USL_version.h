@@ -158,16 +158,14 @@ private:
 		const int Type1;
 		const int Type2;
 		const int ReturnType;
+		bool commutative_types;
 		const OperatorType_T operato;
 		const function func;
 		PrecomputationFunction(int _Type1, int _Type2, int _ReturnType,
 			OperatorType_T _operato,
-			function _func)
+			function _func, bool _commutative_types)
 			: Type1(_Type1), Type2(_Type2), ReturnType(_ReturnType),
-			operato(_operato), func(_func)
-		{
-			
-		}
+			operato(_operato), func(_func), commutative_types(_commutative_types) {};
 	};
 
 	std::vector<PrecomputationFunction> precomputation_functions;
@@ -175,7 +173,7 @@ private:
 public:
 	void AllowPrecomputation(const char* _first_type,
 						const char* _second_type, const char* _return_type,
-						OperatorType_T _operator,
+						OperatorType_T _operator, bool commutative_types,
 						PrecomputationFunction::function _func)
 	{
 		int type1 = FindTypeIdFromName(utils::TextPointer::Get((char*)_first_type));
@@ -183,9 +181,34 @@ public:
 		int ret   = FindTypeIdFromName(utils::TextPointer::Get((char*)_return_type));
 		PrecomputationFunction op = PrecomputationFunction{
 			type1, type2, ret,
-			_operator, _func
+			_operator, _func, commutative_types
 		};
 		precomputation_functions.push_back(op);
+	}
+
+	//Mathemathical operation that is allowed but doesn't have precomputation function
+	struct AllowedOperation
+	{
+		int type_1;
+		int type_2;
+		int return_type;
+		bool commutative_types;
+		OperatorType_T operato;
+		AllowedOperation(int _type_1, int _type_2, int _r_type, OperatorType_T _operato, bool _commutative_types)
+			: type_1(_type_1), type_2(_type_2), return_type(_r_type), operato(_operato), commutative_types(_commutative_types) {};
+	};
+	std::vector<AllowedOperation> allowed_operations;
+	void AllowOperation(const char* _first_type,
+		const char* _second_type, const char* _return_type, 
+		OperatorType_T operato, bool commutative_types)
+	{
+		int type1 = FindTypeIdFromName(utils::TextPointer::Get((char*)_first_type));
+		int type2 = FindTypeIdFromName(utils::TextPointer::Get((char*)_second_type));
+		int ret   = FindTypeIdFromName(utils::TextPointer::Get((char*)_return_type));
+		AllowedOperation ap = AllowedOperation{
+			type1, type2, ret, operato, commutative_types
+		};
+		allowed_operations.push_back(ap);
 	}
 
 	//return - new literal; args - vector && component id
