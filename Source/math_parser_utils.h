@@ -117,7 +117,7 @@ namespace math_parser
 				content.OperatorType = OperatorType_T::add;
 				OwnedNodes = {};
 			}
-			int GetNodeDataTypeId(Version* version);
+			int GetNodeDataTypeId(Version* version, std::vector<std::string>& issues);
 		};
 	
 		std::vector<Node*> All_Nodes;

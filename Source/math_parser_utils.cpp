@@ -446,7 +446,7 @@ namespace math_parser
                 if (Upper != nullptr && Upper->Type == NodeType::Operator && 
                     Upper->content.OperatorType == OperatorType_T::get && Upper->OwnedNodes.size() != 0)
                 {
-                    int get_target_type_id = Upper->OwnedNodes[0]->GetNodeDataTypeId(version);
+                    int get_target_type_id = Upper->OwnedNodes[0]->GetNodeDataTypeId(version, issues);
                     //Vector
                     if (get_target_type_id < version->GetBasicTypesNumber() && get_target_type_id != -1)
                     {
@@ -481,7 +481,7 @@ namespace math_parser
                     {
                         processed->Type = NodeType::Byte;
                         auto& struc = Temp->Structs.at(
-                            Upper->OwnedNodes[0]->GetNodeDataTypeId(version) - version->GetBasicTypesNumber());
+                            Upper->OwnedNodes[0]->GetNodeDataTypeId(version, issues) - version->GetBasicTypesNumber());
                         for (int i = 0; i < struc.second.Members.size(); i++)
                             if (struc.second.Members[i].first == n->Content)
                             {
@@ -547,7 +547,7 @@ namespace math_parser
                             }
 
                             for (auto& arg : processed->OwnedNodes)
-                                a_types.push_back(arg->GetNodeDataTypeId(version));
+                                a_types.push_back(arg->GetNodeDataTypeId(version, issues));
 
                             int func_id = Temp->GetFunctionId(n->Content, a_types, version);
                             
@@ -634,7 +634,7 @@ namespace math_parser
 		}
 	}
 
-    int ExpressionTree::Node::GetNodeDataTypeId(Version* version)
+    int ExpressionTree::Node::GetNodeDataTypeId(Version* version, std::vector<std::string>& issues)
     {
         switch (Type)
         {
@@ -646,8 +646,8 @@ namespace math_parser
             break;
         case math_parser::ExpressionTree::NodeType::Operator:
         {
-            int type_lhs = OwnedNodes[0]->GetNodeDataTypeId(version);
-            int type_rhs = OwnedNodes[1]->GetNodeDataTypeId(version);
+            int type_lhs = OwnedNodes[0]->GetNodeDataTypeId(version, issues);
+            int type_rhs = OwnedNodes[1]->GetNodeDataTypeId(version, issues);
 
             if (content.OperatorType == OperatorType_T::get)
             {
@@ -698,7 +698,7 @@ namespace math_parser
                 int int_id = version->FindTypeIdFromName({ (char*)"int", 3 });
                 int float_id = version->FindTypeIdFromName({ (char*)"float", 5 });
 
-                int third_arg = OwnedNodes[2]->GetNodeDataTypeId(version);
+                int third_arg = OwnedNodes[2]->GetNodeDataTypeId(version, issues);
 
                 for (auto& arg : std::vector<int>{ type_lhs, type_rhs, third_arg })
                     if (arg != int_id && arg != float_id)
@@ -711,8 +711,8 @@ namespace math_parser
                 int int_id     = version->FindTypeIdFromName({ (char*)"int", 3 });
                 int float_id   = version->FindTypeIdFromName({ (char*)"float", 5 });
 
-                int third_arg  = OwnedNodes[2]->GetNodeDataTypeId(version);
-                int fourth_arg = OwnedNodes[3]->GetNodeDataTypeId(version);
+                int third_arg  = OwnedNodes[2]->GetNodeDataTypeId(version, issues);
+                int fourth_arg = OwnedNodes[3]->GetNodeDataTypeId(version, issues);
 
                 for (auto& arg : std::vector<int>{ type_lhs, type_rhs, third_arg, fourth_arg })
                     if (arg != int_id && arg != float_id)
@@ -725,7 +725,35 @@ namespace math_parser
                 if (type_lhs == -1 || type_rhs == -1)
                     return -1;
                 else
-                    return version->GetOperationReturnType(type_lhs, type_rhs, content.OperatorType);
+                {
+                    int return_type = version->GetOperationReturnType(type_lhs, type_rhs, content.OperatorType);
+                    if (return_type == -1)
+                    {
+                        std::string error = "Forbidden operation: ";
+                        auto name_1 = version->FindTypeNameFromId(type_lhs);
+                        auto name_2 = version->FindTypeNameFromId(type_rhs);
+                        error.insert(error.end(), name_1.begin, name_1.begin + name_1.length);
+                        error.push_back(' ');
+                        switch (content.OperatorType)
+                        {
+                        case OperatorType_T::add:
+                            error.push_back('+'); break;
+                        case OperatorType_T::sub:
+                            error.push_back('-'); break;
+                        case OperatorType_T::mul:
+                            error.push_back('*'); break;
+                        case OperatorType_T::div:
+                            error.push_back('/'); break;
+                        case OperatorType_T::pow:
+                            error.push_back('^'); break;
+                        }
+                        error.push_back(' ');
+                        error.insert(error.end(), name_2.begin, name_2.begin + name_2.length);
+                        issues.push_back(error);
+                    }
+
+                    return return_type;
+                }
             }
             break;
         }

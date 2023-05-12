@@ -135,15 +135,30 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
         }
     }    
 
-    if (Tree->All_Nodes[0]->GetNodeDataTypeId(version) != requested_type &&
-        !version->IsAllowedConversion(Tree->All_Nodes[0]->GetNodeDataTypeId(version), requested_type))
+    if (Tree->All_Nodes[0]->GetNodeDataTypeId(version, issues) != requested_type &&
+        !version->IsAllowedConversion(Tree->All_Nodes[0]->GetNodeDataTypeId(version, issues), requested_type))
     {
-        issues.push_back("Type returned by expression does not match requested type");
+        std::string txt = "Type returned by expression does not match requested type (requested: ";
+        std::string requested_type_name;
+        std::string returned_type_name;
+
+        auto rtntp = version->FindTypeNameFromId(requested_type);
+        requested_type_name.insert(requested_type_name.end(), rtntp.begin, rtntp.begin + rtntp.length);
+
+        if (Tree->All_Nodes[0]->GetNodeDataTypeId(version, issues) == -1)
+            returned_type_name = "invalid expression";
+        else
+        {
+            rtntp = version->FindTypeNameFromId(Tree->All_Nodes[0]->GetNodeDataTypeId(version, issues));
+            returned_type_name.insert(returned_type_name.end(), rtntp.begin, rtntp.begin + rtntp.length);
+        }
+            
+        issues.push_back(txt + requested_type_name + ", returned: " + returned_type_name + ")");
     }   
-    else if (version->IsAllowedConversion(Tree->All_Nodes[0]->GetNodeDataTypeId(version), requested_type) &&
+    else if (version->IsAllowedConversion(Tree->All_Nodes[0]->GetNodeDataTypeId(version, issues), requested_type) &&
         Tree->All_Nodes[0]->Type == ExpressionTree::NodeType::Literal)
     {
-        auto result = version->Convert(Tree->All_Nodes[0]->GetNodeDataTypeId(version), requested_type,
+        auto result = version->Convert(Tree->All_Nodes[0]->GetNodeDataTypeId(version, issues), requested_type,
             Tree->All_Nodes[0]->content.Literal.second);
 
         Version::PrecomputationResult* as_precomp_result = new Version::PrecomputationResult{
