@@ -339,6 +339,7 @@ namespace Standards
 					Temp->CompilationConditions.at("VertexLayoutSpecified") = true;
 					Temp->CompilationConditions.at("ContainsVertexShader") = true;
 					Temp->CompilationConditions.at("ContainsPixelShader") = true; 
+					Temp->CompilationConditions.at("VertexReturn") = true;
 					Temp->CompilationConditions.at("PixelReturn") = true;
 				}
 				else
