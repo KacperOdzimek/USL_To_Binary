@@ -58,15 +58,15 @@ void CompilingTask::Start(void* source, int size)
 					binary[sig_pos] += offset;
 				}	
 
+				if (Temp->pass_last_binary_index_to_declarations_positions)
+				{
+					Temp->declarations_positions.push_back(binary.size() - 1 - Temp->FieldsBuffor.size());
+					Temp->pass_last_binary_index_to_declarations_positions = false;
+				}
+
 				for (auto& v : Temp->pass_to_binary_buffor)
 					binary.push_back(v);
 				Temp->pass_to_binary_buffor.clear();
-
-				if (Temp->pass_last_binary_index_to_functions_declarations_positions)
-				{
-					Temp->functions_declarations_positions.push_back(binary.size() - 1);
-					Temp->pass_last_binary_index_to_functions_declarations_positions = false;
-				}
 
 				if (Temp->SignatureWritedFunctionErrors.size())
 					for (auto issue : Temp->SignatureWritedFunctionErrors)
@@ -89,7 +89,6 @@ void CompilingTask::Start(void* source, int size)
 		else
 		{
 			signature_start = signature_end;
-
 		}
 	};
 
@@ -214,14 +213,14 @@ void CompilingTask::Start(void* source, int size)
 	
 	if (Temp->FileType == FileType::Library)
 	{
-		for (int i = Temp->functions_declarations_positions.size() - 1; i != -1; i--)
+		for (int i = Temp->declarations_positions.size() - 1; i != -1; i--)
 		{
-			auto x = (uint16_t)Temp->functions_declarations_positions.at(i);
+			auto x = (uint16_t)Temp->declarations_positions.at(i);
 			binary.insert(binary.begin(), *(((uint8_t*)&x) + 1));
 			binary.insert(binary.begin(), *(((uint8_t*)&x)));
 		}
 			
-		auto x = ((uint16_t)Temp->functions_declarations_positions.size());
+		auto x = ((uint16_t)Temp->declarations_positions.size());
 		binary.insert(binary.begin(), *(((uint8_t*)&x) + 1));
 		binary.insert(binary.begin(), *(((uint8_t*)&x)));
 	}

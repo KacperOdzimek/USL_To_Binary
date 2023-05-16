@@ -83,6 +83,19 @@ public:
 		else
 			return Temp->Structs.at(id - Types.size()).first;
 	}
+	int FindSignatureIdFromName(std::string name)
+	{
+		utils::TextPointer x = { (char*)name.c_str(), (int)name.size() };
+		for (int i = 0; i < Signatures.size(); i++)
+		{
+			int size = 0;
+			while (Signatures[i]->sig[size] != '\0') ++size;
+			if (utils::TextPointer{ (char*)Signatures[i]->sig, size } == x)
+				return i + 1;
+		}
+
+		return -1;
+	}
 	
 private:
 	struct Signature

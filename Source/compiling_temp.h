@@ -126,17 +126,17 @@ struct Compiling_Temp
 	*/
 	std::map<std::string, bool> CompilationConditions;
 
-	std::vector<std::unique_ptr<std::string>> ImportedFunctionsNames;
+	std::vector<std::unique_ptr<std::string>> ImportedStuffNames;
 	/*
 		When library is compiled, we need to know positions of functions declarations
 		to generate file header
 	*/
-	std::vector<int> functions_declarations_positions;
+	std::vector<int> declarations_positions;
 	/*
-		True triggers passing binary size to functions_declarations_positions
+		True triggers passing binary size to declarations_positions
 		When done it automaticaly turns to false
 	*/
-	bool pass_last_binary_index_to_functions_declarations_positions = false;
+	bool pass_last_binary_index_to_declarations_positions = false;
 
 	int RequestedReturnType = -1;
 

@@ -486,11 +486,20 @@ namespace Standards
 
 				if (struct_declaration)
 				{
-					//Add check
 					for (auto& member : Temp->Structs.back().second.Members)
 						if (member.first == Temp->NamesBuffor[0])
 							goto var_dec_name_error;
 					Temp->Structs.back().second.Members.push_back({ Temp->NamesBuffor[0], Temp->FieldsBuffor[0] });
+
+					if (Temp->FileType == FileType::Library)
+					{
+						Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
+						Temp->pass_to_binary_buffor.insert(
+							Temp->pass_to_binary_buffor.end(),
+							Temp->NamesBuffor.front().begin,
+							Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
+						);
+					}
 				}
 				else
 				{
@@ -587,11 +596,22 @@ namespace Standards
 			});
 
 		//Struct declaration
-		V->AddSignature("struct ?n", { Context_t::GlobalScope }, []()
+		V->AddSignature("struct ?n", { Context_t::GlobalScope, Context_t::Library }, []()
 			{
 				Temp->Context = Context_t::StructDeclaration;
 				Temp->Deepness += 1;
 				Temp->Structs.push_back({ Temp->NamesBuffor[0], (uint8_t)Temp->Structs.size() });
+
+				if (Temp->FileType == FileType::Library)
+				{
+					Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
+					Temp->pass_to_binary_buffor.insert(
+						Temp->pass_to_binary_buffor.end(),
+						Temp->NamesBuffor.front().begin,
+						Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
+					);
+					Temp->pass_last_binary_index_to_declarations_positions = true;
+				}
 			});
 
 		//Function declaration
@@ -622,7 +642,7 @@ namespace Standards
 						Temp->NamesBuffor.front().begin, 
 						Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
 					);
-					Temp->pass_last_binary_index_to_functions_declarations_positions = true;
+					Temp->pass_last_binary_index_to_declarations_positions = true;
 				}
 
 				for (auto& func : Temp->FunctionsHeaders)
@@ -774,40 +794,81 @@ namespace Standards
 				else
 				{
 					uint8_t* iterator = (uint8_t*)(library_content.position) + 2;
-					uint16_t functions_count;
-					uint8_t f_count_parts[2] = { *iterator, *(iterator + 1) };
-					memcpy(&functions_count, &f_count_parts[0], 2);
+					uint16_t stuff_count;
+					uint8_t s_count_parts[2] = { *iterator, *(iterator + 1) };
+					memcpy(&stuff_count, &s_count_parts[0], 2);
 					std::vector<uint16_t> positions;
-					for (int i = 0; i < functions_count; i++)
+					for (int i = 0; i < stuff_count; i++)
 					{
 						iterator += 2;
 						uint16_t pos;
-						uint8_t f_pos_parts[2] = { *iterator, *(iterator + 1) };
-						memcpy(&pos, &f_pos_parts[0], 2);
+						uint8_t e_pos_parts[2] = { *iterator, *(iterator + 1) };
+						memcpy(&pos, &e_pos_parts[0], 2);
 						positions.push_back(pos);
-					}						
+					}
+
+					auto get_lib_element_name = [&](int name_size, bool add_lib_name_prefix)
+					{
+						std::unique_ptr<std::string> function_name; 
+						if (add_lib_name_prefix)
+							function_name = std::make_unique<std::string>(lib_name + '.');
+						else
+							function_name = std::make_unique<std::string>("");
+
+						++iterator;
+						function_name->insert(function_name->end(), (char*)(iterator), (char*)(iterator)+name_size);
+
+						return std::move(function_name);
+					};
+
 					for (auto& pos : positions)
 					{
-						iterator = (uint8_t*)(library_content.position) + pos;
-						int return_type_id = *(++iterator);
-						int args_count = *(++iterator);
-						std::vector<int> args;
-						for (int i = 0; i < args_count; i++)
-							args.push_back(*(++iterator));
+						iterator = (uint8_t*)(library_content.position) + pos + 4 + stuff_count * 2;
+						if (*iterator == V->FindSignatureIdFromName("?t ?n ?f"))
+						{
+							int return_type_id = *(++iterator);
+							int args_count = *(++iterator);
+							std::vector<int> args;
+							for (int i = 0; i < args_count; i++)
+								args.push_back(*(++iterator));
+				
+							int name_size = *(++iterator);
+							auto function_name = get_lib_element_name(name_size, true);
+							Temp->ImportedStuffNames.push_back(std::move(function_name));
 
-						int name_size = *(++iterator);
+							int ptr_size = lib_name.size() + 1 + name_size;
+							utils::TextPointer function_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), ptr_size };
 
-						auto FunctionName = std::make_unique<std::string>(lib_name + '.');
-						++iterator;
+							Temp->FunctionsHeaders.push_back({ function_name_ptr, {return_type_id, args} });
+						}
+						else if (*iterator == V->FindSignatureIdFromName("struct ?n"))
+						{
+							int name_size = *(++iterator);
+							auto struct_name = get_lib_element_name(name_size, true);
+							Temp->ImportedStuffNames.push_back(std::move(struct_name));
 
-						FunctionName->insert(FunctionName->end(), (char*)(iterator), (char*)(iterator) + name_size);
+							int ptr_size = lib_name.size() + 1 + name_size;
+							utils::TextPointer struct_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), ptr_size };
 
-						Temp->ImportedFunctionsNames.push_back(std::move(FunctionName));
+							iterator += name_size;
 
-						int ptr_size = lib_name.size() + 1 + name_size;
-						utils::TextPointer FunctionNamePtr{ &(Temp->ImportedFunctionsNames.back()->at(0)), ptr_size };
+							Struct obj = {(uint8_t)Temp->Structs.size()};
+							while (*iterator != 0 && iterator != ((uint8_t*)library_content.position) + library_content.size)
+							{
+								uint8_t member_type = *(++iterator);
+								uint8_t member_name_size = *(++iterator);
 
-						Temp->FunctionsHeaders.push_back({ FunctionNamePtr, {return_type_id, args} });
+								auto member_name = get_lib_element_name(member_name_size, false);
+								Temp->ImportedStuffNames.push_back(std::move(member_name));
+
+								utils::TextPointer member_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), member_name_size };
+
+								obj.Members.push_back({ member_name_ptr, (int)member_type });
+
+								iterator += member_name_size;
+							}
+							Temp->Structs.push_back({ struct_name_ptr, obj });
+						}
 					}
 
 					Temp->pass_to_binary_buffor.push_back(lib_name.size());
