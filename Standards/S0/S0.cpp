@@ -45,8 +45,8 @@ namespace Standards
 			Basic Types
 		*/
 
-		V->AddType("int",     utils::IsInteger, IntegerToBinary);
-		V->AddType("float",   utils::IsFloat, FloatToBinary);
+		V->AddType("int",   4,  utils::IsInteger, IntegerToBinary);
+		V->AddType("float", 4,  utils::IsFloat, FloatToBinary);
 
 		V->SetVectorComponentsNames({ 'x', 'y', 'z', 'w' });
 		V->SetGetComponentFromVectorFunction("float", 
@@ -62,7 +62,7 @@ namespace Standards
 			});	
 
 		//Vectors with 2-4 dimensions
-		V->AddType("vec2", 
+		V->AddType("vec2", V->GetTypeSize("float") * 2,
 			[V](utils::TextPointer& src) 
 			{ 
 				auto a = utils::ExtrudeArguments(src.begin, utils::BracketsType::parentheses);
@@ -80,7 +80,7 @@ namespace Standards
 				return x;
 			});
 
-		V->AddType("vec3",
+		V->AddType("vec3", V->GetTypeSize("float") * 3,
 			[V](utils::TextPointer& src)
 			{
 				auto a = utils::ExtrudeArguments(src.begin, utils::BracketsType::parentheses);
@@ -100,7 +100,7 @@ namespace Standards
 				return x;
 			});
 
-		V->AddType("vec4",
+		V->AddType("vec4", V->GetTypeSize("float") * 4,
 			[V](utils::TextPointer& src)
 			{
 				auto a = utils::ExtrudeArguments(src.begin, utils::BracketsType::parentheses);
@@ -122,54 +122,64 @@ namespace Standards
 				return x;
 			});
 
-		V->AddType("array", [](utils::TextPointer& src)	   {return false; }, 
-							[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{};});
+		V->AddType("array", 0,
+			[](utils::TextPointer& src)	   {return false; }, 
+			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{};});
 
 
-		V->AddType("buffer", [](utils::TextPointer& src) {return false; },
+		V->AddType("buffer",	   0, [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("texture_1d", [](utils::TextPointer& src) {return false; },
+		V->AddType("texture_1d",   0, [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("texture_2d", [](utils::TextPointer& src) {return false; },
+		V->AddType("texture_2d",   0, [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("texture_3d", [](utils::TextPointer& src) {return false; },
+		V->AddType("texture_3d",   0, [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("texture_cube", [](utils::TextPointer& src) {return false; },
+		V->AddType("texture_cube", 0, [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("texture_2d_ms", [](utils::TextPointer& src) {return false; },
+		V->AddType("texture_2d_ms", 0, [](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
 
-		V->AddType("mat2x2", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat2x2", V->GetTypeSize("float") * 2 * 2, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat2x3", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat2x3", V->GetTypeSize("float") * 2 * 3,
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat2x4", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat2x4", V->GetTypeSize("float") * 2 * 4, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat3x2", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat3x2", V->GetTypeSize("float") * 3 * 2, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat3x3", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat3x3", V->GetTypeSize("float") * 3 * 3, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat3x4", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat3x4", V->GetTypeSize("float") * 3 * 4, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat4x2", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat4x2", V->GetTypeSize("float") * 4 * 2, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat4x3", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat4x3", V->GetTypeSize("float") * 4 * 3, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
-		V->AddType("mat4x4", [](utils::TextPointer& src) {return false; },
+		V->AddType("mat4x4", V->GetTypeSize("float") * 4 * 4, 
+			[](utils::TextPointer& src) {return false; },
 			[](utils::TextPointer& to_bin) {return std::vector<uint8_t>{}; });
 
 		/*
@@ -480,7 +490,7 @@ namespace Standards
 		);
 
 		//Variable declaration without initialization
-		V->AddSignature("?t ?n", { Context_t::Shader, Context_t::StructDeclaration, Context_t::CustomFunction }, []()
+		V->AddSignature("?t ?n", { Context_t::Shader, Context_t::StructDeclaration, Context_t::CustomFunction, Context_t::Library }, []()
 			{
 				bool struct_declaration = Temp->Context == Context_t::StructDeclaration;
 
@@ -501,6 +511,11 @@ namespace Standards
 						);
 					}
 				}
+				else if (Temp->Context == Context_t::Library)
+				{
+					Temp->SignatureWritedFunctionErrors.push_back("All variables definied in a library have to be initialized");
+					return;
+				}
 				else
 				{
 					if (Temp->IsVarValiding(Temp->NamesBuffor[0]))
@@ -515,33 +530,37 @@ namespace Standards
 				Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
 			});
 
-		//Variable declaration with initialization
-		V->AddSignature("?t ?n = ?l", { Context_t::Shader, Context_t::CustomFunction }, []()
+		auto declare_var = [V]()
+		{
+			if (!Temp->IsVarValiding(Temp->NamesBuffor[0]))
 			{
-				if (!Temp->IsVarValiding(Temp->NamesBuffor[0]))
-					Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->Deepness} });
-				else
+				Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->Deepness} });
+
+				if (Temp->FileType == FileType::Library)
 				{
-					std::string error = "Variable ";
-					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
-						error += (*(Temp->NamesBuffor[0].begin + i));
-					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+					Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
+					Temp->pass_to_binary_buffor.insert(
+						Temp->pass_to_binary_buffor.end(),
+						Temp->NamesBuffor.front().begin,
+						Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
+					);
+					Temp->pass_last_binary_index_to_declarations_positions = true;
 				}
-			});
+			}
+			else
+			{
+				std::string error = "Variable ";
+				for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
+					error += (*(Temp->NamesBuffor[0].begin + i));
+				Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
+			}
+		};
+
+		//Variable declaration with initialization by literal
+		V->AddSignature("?t ?n = ?l", { Context_t::Shader, Context_t::CustomFunction, Context_t::Library }, declare_var);
 
 		//Variable declaration with initialization by math expression
-		V->AddSignature("?t ?n = ?e", { Context_t::Shader, Context_t::CustomFunction }, []()
-			{
-				if (!Temp->IsVarValiding(Temp->NamesBuffor[0]))
-					Temp->Variables.push_back({ Temp->NamesBuffor[0], {Temp->FieldsBuffor[0], Temp->Deepness} });
-				else
-				{
-					std::string error = "Variable ";
-					for (int i = 0; i < Temp->NamesBuffor[0].length; i++)
-						error += (*(Temp->NamesBuffor[0].begin + i));
-					Temp->SignatureWritedFunctionErrors.push_back(error + " already exists");
-				}	
-			});
+		V->AddSignature("?t ?n = ?e", { Context_t::Shader, Context_t::CustomFunction, Context_t::Library }, declare_var);
 
 		//Array declaration without initialization
 		V->AddSignature("?t ?n [ ?i ]", { Context_t::Shader, Context_t::CustomFunction }, [V]()
@@ -793,6 +812,7 @@ namespace Standards
 					Temp->SignatureWritedFunctionErrors.push_back("Failed to load library " + lib_name);
 				else
 				{
+					Temp->imported_libraries_names.push_back(lib_name);
 					uint8_t* iterator = (uint8_t*)(library_content.position) + 2;
 					uint16_t stuff_count;
 					uint8_t s_count_parts[2] = { *iterator, *(iterator + 1) };
@@ -864,10 +884,34 @@ namespace Standards
 								utils::TextPointer member_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), member_name_size };
 
 								obj.Members.push_back({ member_name_ptr, (int)member_type });
-
-								iterator += member_name_size;
 							}
 							Temp->Structs.push_back({ struct_name_ptr, obj });
+						}
+						else if (*iterator == V->FindSignatureIdFromName("?t ?n = ?l"))
+						{
+							uint8_t type = *(++iterator);
+							int size = V->GetTypeSize(type);
+							iterator += size;
+							
+							uint8_t name_size = *(++iterator);
+							auto var_name = get_lib_element_name(name_size, true);
+							Temp->ImportedStuffNames.push_back(std::move(var_name));
+
+							utils::TextPointer var_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), (int)lib_name.size() + 1 + name_size };
+							Temp->ExternVariables.push_back({ var_name_ptr, type });
+						}
+						else if (*iterator == V->FindSignatureIdFromName("?t ?n = ?e"))
+						{
+							uint8_t type = *(++iterator);
+							int exp_size = *(++iterator);
+							iterator += exp_size;
+
+							uint8_t name_size = *(++iterator);
+							auto var_name = get_lib_element_name(name_size, true);
+							Temp->ImportedStuffNames.push_back(std::move(var_name));
+
+							utils::TextPointer var_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), (int)lib_name.size() + 1 + name_size };
+							Temp->ExternVariables.push_back({ var_name_ptr, type });
 						}
 					}
 

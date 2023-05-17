@@ -815,18 +815,37 @@ namespace math_parser
                 case '.':
                 {
                     int j = i + 1;
-                    bool function = false;
+                    bool pass = false;
+
+                    for (auto& lib : Temp->imported_libraries_names)
+                    {
+                        if (lib.size() == i - start)
+                        {
+                            int k = 0;
+                            for (auto& chr : lib)
+                            {
+                                if (chr != exp.begin[k])
+                                    goto not_this_lib;
+                                ++k;
+                            }
+                            pass = true;
+                            goto goto_pass;
+                        }
+                    not_this_lib:
+                        1;
+                    }
+
                     while (j < bound)
                     {
                         switch (exp.begin[j])
                         {
-                        case ' ': case '+': case '-': case '*': case '/': case '^': case ':': goto finish_is_function;
-                        case '(': function = true; goto finish_is_function; break;
+                        case ' ': case '+': case '-': case '*': case '/': case '^': case ':': goto goto_pass;
+                        case '(': pass = true; goto goto_pass; break;
                         }
                         j++;
                     }
-                finish_is_function:
-                    if (function)
+                goto_pass:
+                    if (pass)
                     {
                         i++;
                     }

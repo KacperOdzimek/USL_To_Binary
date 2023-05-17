@@ -126,7 +126,9 @@ struct Compiling_Temp
 	*/
 	std::map<std::string, bool> CompilationConditions;
 
+	std::vector<std::string> imported_libraries_names;
 	std::vector<std::unique_ptr<std::string>> ImportedStuffNames;
+
 	/*
 		When library is compiled, we need to know positions of functions declarations
 		to generate file header

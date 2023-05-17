@@ -31,6 +31,8 @@ private:
 		friend Version;
 		//Name of type like. int, float etc.
 		const char* name;
+		//Size in bytes (in USL binary)
+		int size;
 		/*
 			Function that checks if value, that pretends to by assigned
 			to variable or arg. field of this type, is correct eg.
@@ -42,9 +44,9 @@ private:
 			results have to be writen directly to Temp::FieldsBuffer
 		*/
 		std::function<std::vector<uint8_t>(utils::TextPointer&)> to_binary;
-		Type(const char* _name, std::function<bool(utils::TextPointer&)> _verify,
+		Type(const char* _name, int _size, std::function<bool(utils::TextPointer&)> _verify,
 		std::function<std::vector<uint8_t>(utils::TextPointer&)> _to_binary) :
-		name(_name), verify(_verify), to_binary(_to_binary) {};
+		name(_name), size(_size), verify(_verify), to_binary(_to_binary) {};
 	};
 public:
 	char vector_components_names[4];
@@ -154,13 +156,26 @@ public:
 
 	template <uint64_t arr_size>
 	void AddType(
-		const char(&_name)[arr_size], 
+		const char(&_name)[arr_size], int _size,
 		std::function<bool(utils::TextPointer&)> _verify,
 		std::function<std::vector<uint8_t>(utils::TextPointer&)> _to_binary)
 		{
-    		auto T = new Type(_name, _verify, _to_binary);
+    		auto T = new Type(_name, _size, _verify, _to_binary);
     		Types.push_back(T);
 		}
+
+	int GetTypeSize(int id)
+	{
+		return Types.at(id)->size;
+	}
+
+	template <uint64_t arr_size>
+	int GetTypeSize(const char(&_name)[arr_size])
+	{
+		int id = FindTypeIdFromName(utils::TextPointer{ (char*)&_name, arr_size - (((char*)(&_name))[arr_size - 1]  == '\0' ? 1 : 0)});
+		if (id == -1) return 0;
+		return GetTypeSize(id);
+	}
 
 private:
 	//Function that handle basic mathematical operations on basic types literals
