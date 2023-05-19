@@ -884,6 +884,8 @@ namespace Standards
 								utils::TextPointer member_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), member_name_size };
 
 								obj.Members.push_back({ member_name_ptr, (int)member_type });
+
+								iterator += member_name_ptr.length;
 							}
 							Temp->Structs.push_back({ struct_name_ptr, obj });
 						}

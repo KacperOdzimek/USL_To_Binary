@@ -90,7 +90,7 @@ namespace math_parser
 	{
 		enum class NodeType
 		{
-			Operator, Variable, Literal, Function, StructMember, Byte
+			Operator, Variable, Literal, Function, StructConstructor, Byte
 		};
 
 		struct Node
@@ -103,8 +103,8 @@ namespace math_parser
 				std::pair<int, utils::TextPointer> Literal;
 				//variable id
 				int Variable;
-				//member id
-				int StructMember;
+				//struct id
+				int StructConstructor;
 				OperatorType_T OperatorType;
 				uint8_t Byte;
                 content_u() {OperatorType = OperatorType_T::add;};
@@ -134,7 +134,7 @@ namespace math_parser
 	{
 		enum class Type
 		{
-			Variable, Operator, StructMember, Literal, Function, Byte
+			Variable, Operator, StructConstructor, Literal, Function, Byte
 		};
 		const Type type;
 		uint8_t rest = 0;
@@ -148,7 +148,7 @@ namespace math_parser
 				return rest + 128;
 			case Type::Operator:
 				return rest;
-			case Type::StructMember:
+			case Type::StructConstructor:
 				return rest + 32;
 			case Type::Literal:
 				return rest + 64;

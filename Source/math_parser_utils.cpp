@@ -531,7 +531,7 @@ namespace math_parser
 					}
                     else
                     {
-                        //Check if it is a function call
+                        //Check if it is a function call or struct literal
                         if (n->Owned.size() != 0 || *(n->Content.begin + n->Content.length) == '(')
                         {
                             std::vector<int> a_types;
@@ -557,36 +557,91 @@ namespace math_parser
                                 processed->content.FunctionId = func_id;
                                 return { true, processed }; //Return as child nodes were converted
                             }
+
+                            std::string str;
+
                             switch (func_id)
                             {
+                            //It also may be a struct literal
                             case -1:
-                                goto Unrecognised_symbol; break;
+                            {
+                                for (int i = 0; i < Temp->Structs.size(); i++)
+                                {
+                                    if (n->Content != Temp->Structs.at(i).first)
+                                        continue;
+                                    else
+                                    {
+                                        if (a_types.size() > Temp->Structs.at(i).second.Members.size())
+                                        {
+                                            str = "Too much arguments for literal of: ";
+                                            str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
+                                            issues.push_back(str);
+                                        }
+                                        else if (a_types.size() < Temp->Structs.at(i).second.Members.size())
+                                        {
+                                            str = "Too little arguments for literal of: ";
+                                            str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
+                                            issues.push_back(str);
+                                        }
+                                        else
+                                        {
+                                            bool success = true;
+                                            for (int j = 0; j < Temp->Structs.at(i).second.Members.size(); j++)
+                                                if (Temp->Structs.at(i).second.Members.at(j).second != a_types.at(j))
+                                                {
+                                                    str = "argument [" + std::to_string(j + 1) + "] in literal of ";
+                                                    str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
+                                                    str  += " doesn't match requested type (requested: ";
+
+                                                    std::string requested_type_name;
+                                                    std::string arg_type_name;
+
+                                                    auto rtntp = version->FindTypeNameFromId(Temp->Structs.at(i).second.Members.at(j).second);
+                                                    requested_type_name.insert(requested_type_name.end(), rtntp.begin, rtntp.begin + rtntp.length);
+
+                                                    if (a_types.at(j) == -1)
+                                                        arg_type_name = "invalid expression";
+                                                    else
+                                                    {
+                                                        rtntp = version->FindTypeNameFromId(a_types.at(j));
+                                                        arg_type_name.insert(arg_type_name.end(), rtntp.begin, rtntp.begin + rtntp.length);
+                                                    }
+
+                                                    str += requested_type_name + ", argument: " + arg_type_name + ')';
+
+                                                    str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
+                                                    issues.push_back(str);
+
+                                                    bool success = false;
+                                                }
+
+                                            if (success)
+                                            {
+                                                processed->Type = ExpressionTree::NodeType::StructConstructor;
+                                                processed->content.StructConstructor = { i };
+                                                return { true, processed };
+                                            }
+                                            else
+                                                goto Unrecognised_symbol;
+                                        }
+                                    }
+                                }
+                                break;
+                            }
                             case -2:
-                            {
-                                std::string str = "type/s of arguments doesn't match any overload of the function: ";
-                                str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
-                                issues.push_back(str);
-                                break;
-                            }
+                                str = "Type/s of arguments doesn't match any overload of the function: "; break;
                             case -3:
-                            {
-                                std::string str = "argument set too big for a function: ";
-                                str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
-                                issues.push_back(str);
-                                break;
-                            }
+                                str = "Argument set too big for a function: "; break;
                             case -4:
-                            {
-                                std::string str = "argument set too little for a function: ";
-                                str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
-                                issues.push_back(str);
-                                break;
+                                str = "Argument set too little for a function: "; break;
                             }
-                            }      
+
+                            str.insert(str.end(), n->Content.begin, n->Content.begin + n->Content.length);
+                            issues.push_back(str);
                         }
                         else
                         {
-                            Unrecognised_symbol:
+                        Unrecognised_symbol:
                             std::string symbol(n->Content.begin);
                             issues.push_back("Unrecognised symbol: " + symbol.substr(0, n->Content.length));
                         }
@@ -643,6 +698,9 @@ namespace math_parser
             break;
         case math_parser::ExpressionTree::NodeType::Literal:
             return content.Literal.first;
+            break;
+        case math_parser::ExpressionTree::NodeType::StructConstructor:
+            return content.StructConstructor + version->GetBasicTypesNumber();
             break;
         case math_parser::ExpressionTree::NodeType::Operator:
         {

@@ -346,9 +346,9 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
             type = BinaryNode::Type::Operator; break;
         case ExpressionTree::NodeType::Byte:
             type = BinaryNode::Type::Byte; break;
-        //StructMember
+        //StructConstructor
         default:
-            type = BinaryNode::Type::StructMember; break;
+            type = BinaryNode::Type::StructConstructor; break;
         }
 
         BinaryNode bn(type);
@@ -361,11 +361,19 @@ bool math_parser::ParseMath(utils::TextPointer exp, int requested_type, Version*
             Binary.push_back(bn);
             return GoUp(); break;
         }
-        case math_parser::BinaryNode::Type::StructMember:
+        case math_parser::BinaryNode::Type::StructConstructor:
         {
-            bn.SetRest(current_node->content.StructMember);
+            bn.SetRest(0);
             Binary.push_back(bn);
-            return GoUp(); break;
+            Binary.push_back(current_node->content.StructConstructor);
+            //Go Deeper
+            if (current_node->OwnedNodes.size() != 0)
+            {
+                path.push_back(0);
+                current_node = current_node->OwnedNodes[0];
+                return true;
+            }
+            GoUp(); break;
         }
         case math_parser::BinaryNode::Type::Literal:
         {
