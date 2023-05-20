@@ -13,7 +13,7 @@ namespace utils
 */
 enum class Context_t
 {
-	GlobalScope, Shader, CustomFunction, StructDeclaration, Library
+	GlobalScope, Shader, CustomFunction, StructDeclaration, Library, Macro
 };
 
 enum class ShaderType_t : uint8_t
@@ -141,6 +141,9 @@ struct Compiling_Temp
 	bool pass_last_binary_index_to_declarations_positions = false;
 
 	int RequestedReturnType = -1;
+
+	int MacroType = -1;
+	std::vector<utils::TextPointer> macro_cases;
 
 	//Can be used by signatures to pass external bytes to binary
 	std::vector<uint8_t> pass_to_binary_buffor;

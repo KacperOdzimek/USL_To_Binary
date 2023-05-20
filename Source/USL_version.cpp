@@ -432,6 +432,7 @@ Version::IsMatchingResult Version::IsMatching(char* t, int s, Signature* sig)
                 int length = iterator - c_w.begin;
 
                 result = math_parser::ParseMath({ c_w.begin, length }, 
+                    Temp->Context == Context_t::Macro ? Temp->MacroType :
                     s_w.begin[1] == 'e' ? Temp->FieldsBuffor[first_type_id] : Temp->RequestedReturnType,
                     this, issues);
                 c_i = iterator - t - c_w.length - 1;

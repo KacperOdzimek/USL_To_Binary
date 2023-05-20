@@ -969,6 +969,70 @@ namespace Standards
 				Temp->pass_to_binary_buffor.push_back((uint8_t)Temp->geometry_shader_output_primitive_id);
 			});
 
+		//Declare variable, which content depend on api
+		V->AddSignature("using macro ?t ?n", { Context_t::Library, Context_t::Shader }, [V]()
+			{
+				if (Temp->FileType == FileType::Library && Temp->Context == Context_t::Library)
+				{
+					Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
+					Temp->pass_to_binary_buffor.insert(
+						Temp->pass_to_binary_buffor.end(),
+						Temp->NamesBuffor.front().begin,
+						Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
+					);
+					Temp->pass_last_binary_index_to_declarations_positions = true;
+				}
+
+				Temp->macro_cases = {};
+				Temp->Context = Context_t::Macro;
+				Temp->MacroType = Temp->FieldsBuffor[0];
+				Temp->Deepness++;
+			});
+
+		//Macro case, with expression
+		V->AddSignature("?n : ?e", { Context_t::Macro }, [V]()
+			{
+				for (auto& existing_case : Temp->macro_cases)
+					if (existing_case == Temp->NamesBuffor.front())
+					{
+						std::string error = "This macro already contains the case for: ";
+						error.insert(
+							error.end(),
+							Temp->NamesBuffor.front().begin,
+							Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length);
+						Temp->SignatureWritedFunctionErrors.push_back(error);
+					}
+
+				Temp->macro_cases.push_back(Temp->NamesBuffor.front());
+
+				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
+				Temp->pass_to_binary_buffor.insert(
+					Temp->pass_to_binary_buffor.end(),
+					Temp->NamesBuffor.front().begin,
+					Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
+				);
+			});
+
+		//Macro case, with text
+		V->AddSignature("?n : ?n", { Context_t::Macro }, [V]()
+			{
+				Temp->macro_cases.push_back(Temp->NamesBuffor.front());
+
+				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor[0].length);
+				Temp->pass_to_binary_buffor.insert(
+					Temp->pass_to_binary_buffor.end(),
+					Temp->NamesBuffor[0].begin,
+					Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length
+				);
+
+				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor[1].length);
+				Temp->pass_to_binary_buffor.insert(
+					Temp->pass_to_binary_buffor.end(),
+					Temp->NamesBuffor[1].begin,
+					Temp->NamesBuffor[1].begin + Temp->NamesBuffor[1].length
+				);
+			});
+
 		//Finish drawing primitive
 		V->AddSignature("FinishPrimitive", { Context_t::Shader }, [V]()
 			{

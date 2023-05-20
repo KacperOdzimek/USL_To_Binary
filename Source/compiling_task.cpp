@@ -34,8 +34,9 @@ void CompilingTask::Start(void* source, int size)
 
 	//Current line of code
 	int line = 0;
+	Context_t previous_context = Context_t::GlobalScope;
 
-	auto FinishSig = [&prompt, &signature_start, &signature_end, &begin, &binary, &CurrentVersion, &line]() mutable {
+	auto FinishSig = [&]() mutable {
 		if ((signature_end - signature_start) != 2)
 		{
 			auto result = CurrentVersion->Match(&begin[signature_start], signature_end - signature_start);
@@ -51,7 +52,10 @@ void CompilingTask::Start(void* source, int size)
 				Temp->SignatureWritedFunctionErrors.clear();
 				try
 				{
+					Context_t copy = Temp->Context;
 					result.matching_signature->LeaveTranslatorTips();
+					if (copy != Temp->Context)
+						previous_context = copy;
 				}
 				catch (int offset)
 				{
@@ -114,6 +118,7 @@ void CompilingTask::Start(void* source, int size)
 		Main loop
 	*/
 	Temp->Context = Context_t::GlobalScope;
+
 	int local_deepness = 0;
 	int space_counter = 0;
 	bool non_white_char_occured = false;
@@ -170,7 +175,13 @@ void CompilingTask::Start(void* source, int size)
 					{
 					case FileType::Library: Temp->Context = Context_t::Library; break;
 					default: Temp->Context = Context_t::GlobalScope; break;
-					}			
+					}
+				
+				if (Temp->Context == Context_t::Macro && local_deepness != 0)
+					Temp->Context = previous_context;
+
+				else if (Temp->Context == Context_t::Macro && local_deepness == 0)
+					Temp->Context = Context_t::GlobalScope;
 
 				//Remove variables from leaved scope
 				{
