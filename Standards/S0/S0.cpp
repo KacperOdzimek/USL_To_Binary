@@ -915,6 +915,17 @@ namespace Standards
 							utils::TextPointer var_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), (int)lib_name.size() + 1 + name_size };
 							Temp->ExternVariables.push_back({ var_name_ptr, type });
 						}
+						else if (*iterator == V->FindSignatureIdFromName("using macro ?t ?n"))
+						{
+							uint8_t type = *(++iterator);
+							uint8_t name_size = *(++iterator);
+
+							auto var_name = get_lib_element_name(name_size, true);
+							Temp->ImportedStuffNames.push_back(std::move(var_name));
+
+							utils::TextPointer var_name_ptr{ &(Temp->ImportedStuffNames.back()->at(0)), (int)lib_name.size() + 1 + name_size };
+							Temp->ExternVariables.push_back({ var_name_ptr, type });
+						}
 					}
 
 					Temp->pass_to_binary_buffor.push_back(lib_name.size());
@@ -970,19 +981,9 @@ namespace Standards
 			});
 
 		//Declare variable, which content depend on api
-		V->AddSignature("using macro ?t ?n", { Context_t::Library, Context_t::Shader }, [V]()
+		V->AddSignature("using macro ?t ?n", { Context_t::Library, Context_t::Shader }, [V, declare_var]()
 			{
-				if (Temp->FileType == FileType::Library && Temp->Context == Context_t::Library)
-				{
-					Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor.front().length);
-					Temp->pass_to_binary_buffor.insert(
-						Temp->pass_to_binary_buffor.end(),
-						Temp->NamesBuffor.front().begin,
-						Temp->NamesBuffor.front().begin + Temp->NamesBuffor.front().length
-					);
-					Temp->pass_last_binary_index_to_declarations_positions = true;
-				}
-
+				declare_var();
 				Temp->macro_cases = {};
 				Temp->Context = Context_t::Macro;
 				Temp->MacroType = Temp->FieldsBuffor[0];
@@ -1028,11 +1029,11 @@ namespace Standards
 				if (Temp->NamesBuffor[1].begin[0] != '\"' && Temp->NamesBuffor[1].begin[Temp->NamesBuffor[1].length - 1] != '\"')
 					Temp->SignatureWritedFunctionErrors.push_back("Missing '\"'");
 
-				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor[1].length - 2);
+				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor[1].length - 1);
 				Temp->pass_to_binary_buffor.insert(
 					Temp->pass_to_binary_buffor.end(),
 					Temp->NamesBuffor[1].begin + 1,
-					Temp->NamesBuffor[1].begin + Temp->NamesBuffor[1].length - 1
+					Temp->NamesBuffor[1].begin + Temp->NamesBuffor[1].length
 				);
 			});
 

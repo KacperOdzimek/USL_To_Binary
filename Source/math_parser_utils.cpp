@@ -879,7 +879,7 @@ namespace math_parser
                     {
                         if (lib.size() == i - start)
                         {
-                            int k = 0;
+                            int k = start;
                             for (auto& chr : lib)
                             {
                                 if (chr != exp.begin[k])

@@ -26,6 +26,16 @@ namespace utils
 
 				*(start + i) == ' ')
 				return TextPointer(start + spaces, (int)i - spaces);
+
+			if (start[i - 1] == '\"')
+			{
+				for (;; i++)
+				{
+					if (start[i] == '\"' || start[i] == '\0' || start[i] == '\r' || start[i] == '\n')
+						return TextPointer(start + spaces, (int)i - spaces);
+				}
+			}
+
 			i++;
 		}
 		return TextPointer(start + spaces, (int)i - spaces);
