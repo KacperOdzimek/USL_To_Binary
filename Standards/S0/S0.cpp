@@ -1025,11 +1025,14 @@ namespace Standards
 					Temp->NamesBuffor[0].begin + Temp->NamesBuffor[0].length
 				);
 
-				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor[1].length);
+				if (Temp->NamesBuffor[1].begin[0] != '\"' && Temp->NamesBuffor[1].begin[Temp->NamesBuffor[1].length - 1] != '\"')
+					Temp->SignatureWritedFunctionErrors.push_back("Missing '\"'");
+
+				Temp->pass_to_binary_buffor.push_back(Temp->NamesBuffor[1].length - 2);
 				Temp->pass_to_binary_buffor.insert(
 					Temp->pass_to_binary_buffor.end(),
-					Temp->NamesBuffor[1].begin,
-					Temp->NamesBuffor[1].begin + Temp->NamesBuffor[1].length
+					Temp->NamesBuffor[1].begin + 1,
+					Temp->NamesBuffor[1].begin + Temp->NamesBuffor[1].length - 1
 				);
 			});
 
